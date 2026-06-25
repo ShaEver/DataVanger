@@ -9,6 +9,10 @@ namespace DataVanger.Core;
 
 public sealed class CleanerEngine
 {
+    // Keep only the most recent pre-delete backup sets; older ones are pruned on each clean
+    // so the CleanerBackup folder cannot grow without bound and become junk itself.
+    private const int MaxRetainedBackups = 5;
+
     public Task<List<CleanerItem>> AnalyzeAsync(CancellationToken ct = default) =>
         Task.Run(() => Analyze(ct), ct);
 
@@ -51,10 +55,14 @@ public sealed class CleanerEngine
         string? backupRoot = null;
         if (createBackup)
         {
-            backupRoot = Path.Combine(
+            string backupParent = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                "DataVanger", "CleanerBackup", DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                "DataVanger", "CleanerBackup");
+            backupRoot = Path.Combine(backupParent, DateTime.Now.ToString("yyyyMMdd_HHmmss"));
             Directory.CreateDirectory(backupRoot);
+            // Retention: the pre-delete backups are themselves disposable — keep only the most
+            // recent few so CleanerBackup does not grow without bound and become junk itself.
+            PruneOldBackups(backupParent, MaxRetainedBackups);
         }
 
         foreach (var item in items.Where(i => i.Selected))
@@ -115,14 +123,15 @@ public sealed class CleanerEngine
             try
             {
                 var fi = new FileInfo(file);
-                if (JunkCleaningPolicy.IsCleanableFile(file, location, out bool inUse))
+                // Measurement is read-only: use the cheap candidate gate (no exclusive open).
+                // The lock test happens once at delete time in Clean(), not per file here.
+                if (JunkCleaningPolicy.IsCleanableCandidate(file, location))
                 {
                     result.Bytes += fi.Length;
                     result.Count++;
                     result.OldestLastWrite = result.OldestLastWrite == null || fi.LastWriteTime < result.OldestLastWrite ? fi.LastWriteTime : result.OldestLastWrite;
                     result.NewestLastWrite = result.NewestLastWrite == null || fi.LastWriteTime > result.NewestLastWrite ? fi.LastWriteTime : result.NewestLastWrite;
                 }
-                if (inUse) result.HasFilesInUse = true;
             }
             catch (UnauthorizedAccessException)
             {
@@ -199,6 +208,38 @@ public sealed class CleanerEngine
         }
         catch (UnauthorizedAccessException) { /* Protected root - nothing further to prune. */ }
         catch (IOException) { /* Unreadable root - nothing further to prune. */ }
+    }
+
+    /// <summary>
+    /// Deletes all but the <paramref name="keep"/> most recent backup subdirectories under
+    /// <paramref name="backupParent"/> (ordered by creation time, newest kept). Best-effort:
+    /// a busy/protected backup is left in place and never aborts cleaning.
+    /// </summary>
+    public static void PruneOldBackups(string backupParent, int keep)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(backupParent) || !Directory.Exists(backupParent)) return;
+            var stale = Directory.GetDirectories(backupParent)
+                .OrderByDescending(GetCreationTimeSafe)
+                .Skip(Math.Max(0, keep))
+                .ToList();
+            foreach (var dir in stale)
+            {
+                try { Directory.Delete(dir, recursive: true); }
+                catch (UnauthorizedAccessException) { /* Protected backup - leave in place. */ }
+                catch (IOException) { /* Backup busy/in use - leave in place. */ }
+            }
+        }
+        catch (UnauthorizedAccessException) { /* Cannot enumerate backups - skip pruning. */ }
+        catch (IOException) { /* Cannot enumerate backups - skip pruning. */ }
+    }
+
+    private static DateTime GetCreationTimeSafe(string dir)
+    {
+        try { return Directory.GetCreationTimeUtc(dir); }
+        catch (UnauthorizedAccessException) { return DateTime.MinValue; }
+        catch (IOException) { return DateTime.MinValue; }
     }
 
     private static string SanitizeFileName(string value)

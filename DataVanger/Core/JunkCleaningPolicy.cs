@@ -71,9 +71,15 @@ public static class JunkCleaningPolicy
         catch { return true; }
     }
 
-    public static bool IsCleanableFile(string path, JunkLocation location, out bool inUse)
+    /// <summary>
+    /// Cheap, read-only cleanability gate: existence, critical/system/age/extension and
+    /// cache/safe-extension checks. Does NOT open the file, so the measurement pass can size
+    /// every candidate without taking an exclusive lock on each one. Whether the file can be
+    /// deleted right now (not held by another process) is a separate, delete-time concern —
+    /// see <see cref="IsDeletableNow"/>.
+    /// </summary>
+    public static bool IsCleanableCandidate(string path, JunkLocation location)
     {
-        inUse = false;
         try
         {
             var fi = new FileInfo(path);
@@ -85,21 +91,37 @@ public static class JunkCleaningPolicy
 
             bool knownCache = IsKnownCachePath(fi.FullName);
             bool safeExt = SafeExtensions.Contains(fi.Extension);
-            if (!knownCache && !safeExt) return false;
+            return knownCache || safeExt;
+        }
+        catch { return false; }
+    }
 
-            try
-            {
-                using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-            }
-            catch
-            {
-                inUse = true;
-                return false;
-            }
-
+    /// <summary>
+    /// Delete-time lock test: true only if the file can be opened exclusively (i.e. it is not
+    /// held open by another process). Done once, immediately before deletion, instead of on
+    /// every file during the read-only measurement pass.
+    /// </summary>
+    public static bool IsDeletableNow(string path)
+    {
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             return true;
         }
         catch { return false; }
+    }
+
+    /// <summary>
+    /// Backwards-compatible combined check (candidate gates + the lock test). Prefer
+    /// <see cref="IsCleanableCandidate"/> for sizing and <see cref="IsDeletableNow"/> at
+    /// delete time so the measurement pass never opens files exclusively.
+    /// </summary>
+    public static bool IsCleanableFile(string path, JunkLocation location, out bool inUse)
+    {
+        inUse = false;
+        if (!IsCleanableCandidate(path, location)) return false;
+        if (!IsDeletableNow(path)) { inUse = true; return false; }
+        return true;
     }
 
     private static IEnumerable<JunkLocation> BrowserCacheLocations(string local)
