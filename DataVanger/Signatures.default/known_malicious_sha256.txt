@@ -1,0 +1,11 @@
+# DataVanger — pacote base de hashes maliciosos (default embarcado)
+#
+# Este pacote embarca SOMENTE a assinatura do EICAR Standard Anti-Virus Test
+# File — o artefato de teste padrão da indústria, inofensivo (https://www.eicar.org).
+# Ele permite o DataVanger provar o caminho "confirmado -> quarentena automática"
+# sem distribuir malware real. É semeado (sem sobrescrever) em
+#   %UserProfile%\DataVanger\Signatures\known_malicious_sha256.txt
+# na primeira execução. Acrescente seus próprios hashes SHA-256 (um por linha).
+#
+# EICAR Standard Anti-Virus Test File (SHA-256):
+275A021BBFB6489E54D471899F7DB9D1663FC695EC2FE2A2C4538AABF651FD0F

@@ -47,4 +47,13 @@
     <ProjectReference Include="..\DataVanger.Engine\DataVanger.Engine.csproj" />
     <ProjectReference Include="..\DataVanger.Infrastructure\DataVanger.Infrastructure.csproj" />
   </ItemGroup>
+
+  <!-- Copy the bundled default detection pack into the test output so
+       DefaultSignaturePackTests can read the real shipped artifact via
+       DefaultSignaturePack.DefaultsRoot (AppContext.BaseDirectory\Signatures.default). -->
+  <ItemGroup>
+    <Content Include="..\DataVanger\Signatures.default\**"
+             Link="Signatures.default\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

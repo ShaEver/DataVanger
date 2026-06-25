@@ -52,6 +52,20 @@ public sealed class SignatureDatabase
         if (!File.Exists(path)) File.WriteAllText(path, "");
     }
 
+    /// <summary>
+    /// Parses one line of a SHA-256 list file into a normalized (upper-case) hash, or
+    /// <c>null</c> when the line is a comment/blank/malformed. Strips inline <c>#</c>/<c>;</c>
+    /// comments and takes the first whitespace/comma-separated token. Shared so the default
+    /// pack seeder (<see cref="DefaultSignaturePack"/>) reads files identically to <see cref="Load"/>.
+    /// </summary>
+    public static string? ParseHashLine(string line)
+    {
+        var clean = line.Split(new[] { '#' }, 2)[0].Split(new[] { ';' }, 2)[0].Trim();
+        if (string.IsNullOrWhiteSpace(clean)) return null;
+        var h = clean.Split(new[] { ' ', '\t', ',' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim().ToUpperInvariant() ?? "";
+        return (h.Length == 64 && h.All(Uri.IsHexDigit)) ? h : null;
+    }
+
     private static void LoadFile(string path, HashSet<string> destination)
     {
         try
@@ -59,11 +73,8 @@ public sealed class SignatureDatabase
             if (!File.Exists(path)) return;
             foreach (var line in File.ReadLines(path))
             {
-                var clean = line.Split(new[] { '#' }, 2)[0].Split(new[] { ';' }, 2)[0].Trim();
-                if (string.IsNullOrWhiteSpace(clean)) continue;
-                var h = clean.Split(new[] { ' ', '\t', ',' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()?.Trim().ToUpperInvariant() ?? "";
-                if (h.Length == 64 && h.All(Uri.IsHexDigit))
-                    destination.Add(h);
+                var h = ParseHashLine(line);
+                if (h != null) destination.Add(h);
             }
         }
         catch (Exception ex) when (ex is not OutOfMemoryException

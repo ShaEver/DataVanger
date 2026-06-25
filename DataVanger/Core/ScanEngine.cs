@@ -98,6 +98,10 @@ public class ScanEngine : IScanEngine
         Directory.CreateDirectory(YaraRulesRoot);
         if (!File.Exists(WhitelistPath)) File.WriteAllText(WhitelistPath, "");
         if (!File.Exists(BlacklistPath)) File.WriteAllText(BlacklistPath, "");
+
+        // Seed the bundled default detection pack (EICAR baseline) so the scanner is not
+        // blind out of the box. Idempotent + additive — never overwrites user-edited lists.
+        DefaultSignaturePack.EnsureSeeded(SignatureRoot);
     }
 
     public async Task<(List<ScanFinding> findings, ScanMetrics metrics)> RunAsync(

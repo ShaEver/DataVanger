@@ -24,6 +24,12 @@
     <Resource Include="app.ico" />
   </ItemGroup>
 
+  <!-- Bundled default detection pack (EICAR baseline). Copied next to the executable so
+       DefaultSignaturePack.EnsureSeeded can seed it into the user's signature root. -->
+  <ItemGroup>
+    <Content Include="Signatures.default\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\DataVanger.Shared\DataVanger.Shared.csproj" />
   </ItemGroup>

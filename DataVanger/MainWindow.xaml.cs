@@ -746,6 +746,13 @@ public partial class MainWindow : Window
         sb.AppendLine($"Maliciosos conhecidos: {signatures.KnownMalicious.Count + signatures.UserBlacklist.Count}");
         sb.AppendLine($"Confiáveis conhecidos: {signatures.KnownSafe.Count + signatures.UserWhitelist.Count}");
         sb.AppendLine($"Regras YARA leves    : {yaraDb.Count} ({(settings.EnableYaraRules ? "ativadas" : "desativadas")})");
+        var sigStatus = DefaultSignaturePack.Describe(signatures, yaraDb);
+        if (sigStatus.IsBlind)
+            sb.AppendLine("Estado da detecção   : ⚠ SEM ASSINATURAS — detecção apenas heurística (não confirma malware).");
+        else if (sigStatus.IsBaselineOnly)
+            sb.AppendLine("Estado da detecção   : somente baseline/teste (EICAR) — adicione um feed real para cobertura.");
+        else
+            sb.AppendLine("Estado da detecção   : assinaturas carregadas.");
         sb.AppendLine($"Scan de compactados  : {(settings.DeepScanArchives ? "ativado no perfil Deep" : "desativado")}");
         sb.AppendLine($"URL de atualização   : {(string.IsNullOrWhiteSpace(settings.SignatureUpdateUrl) ? "(não configurada)" : settings.SignatureUpdateUrl)}");
         sb.AppendLine($"Monitor em tempo real: {(_monitor.IsRunning ? "ativo" : "inativo")}");
