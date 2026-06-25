@@ -17,9 +17,11 @@ reversível.
 > **Active / Prepared / Fallback / Stub / Disabled / Needs audit** para que nada seja
 > super-anunciado. Não assuma que um módulo *Prepared/Stub* está ativo.
 
-> **Código-fonte:** a árvore de código completa está empacotada em
-> [`DataVanger.zip`](DataVanger.zip). Extraia o zip antes de compilar/testar; os
-> comandos abaixo assumem que você está dentro da pasta `DataVanger/` extraída.
+> **Código-fonte:** versionado como árvore de arquivos na raiz deste repositório
+> (a solução `DataVanger.sln` e os 6 projetos). Os comandos abaixo são executados
+> a partir da raiz do repositório. Um workflow de **CI no Windows**
+> (`.github/workflows/ci.yml`) roda build + testes + checagem de invariantes a cada
+> push/PR.
 
 ---
 
@@ -135,15 +137,26 @@ Aplicado em `DataVanger/Core/ThreatClassificationPolicy.cs` e
   (realtime, serviço, ETW/AMSI, transporte HTTP de update, memory/behavioral no scan).
 - Sem CI/CD automatizado; a validação é manual (PowerShell + `dotnet`).
 
-## 10. Documentação
+## 10. Integração contínua
 
-Dentro de `DataVanger.zip`:
+`.github/workflows/ci.yml` roda em `windows-latest` a cada push nas branches
+`main`/`claude/**` e em PRs para `main`:
 
-- `docs/OPERATOR_GUIDE.md` — execução, configurações, comportamento de
-  scan/quarentena/agendador/realtime/update/serviço.
-- `docs/DEVELOPER_GUIDE.md` — layout, pipeline de detecção, como adicionar
-  módulos/testes, invariantes, regras de segurança.
-- `docs/MODULE_STATUS_MATRIX.md` — status por módulo com referências de arquivo.
+1. `dotnet restore` + `dotnet build DataVanger.sln` (Release);
+2. `dotnet test DataVanger.Tests`;
+3. checagem das invariantes (passo (a)/(b)/(c) da seção 5) em PowerShell —
+   falha o build se houver `catch` anônimo, `lock(qm)` ou `.cs` com CRLF.
+
+## 11. Documentação
+
+- [`docs/OPERATOR_GUIDE.md`](docs/OPERATOR_GUIDE.md) — execução, configurações,
+  comportamento de scan/quarentena/agendador/realtime/update/serviço.
+- [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md) — layout, pipeline de detecção,
+  como adicionar módulos/testes, invariantes, regras de segurança.
+- [`docs/MODULE_STATUS_MATRIX.md`](docs/MODULE_STATUS_MATRIX.md) — status por módulo
+  com referências de arquivo.
+- [`docs/README_ORIGINAL_EN.md`](docs/README_ORIGINAL_EN.md) — README técnico
+  original (em inglês).
 - `outputs/*` — especificações de fase e histórico.
 - [`ANALISE_PROS_E_CONTRAS.md`](ANALISE_PROS_E_CONTRAS.md) — análise de pontos
   positivos e negativos do projeto.

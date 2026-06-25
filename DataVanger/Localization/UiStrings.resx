@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Recursos neutros = pt-BR (idioma padrão do produto; NeutralLanguage=pt-BR
+       no csproj). Fase Beta 01B: strings do shell + conjunto legado
+       representativo. NÃO localizar identificadores, comandos IPC, campos de
+       DTO ou chaves persistidas. -->
+
+  <data name="Shell_NavigationHeader" xml:space="preserve">
+    <value>NAVEGAÇÃO</value>
+  </data>
+  <data name="Shell_Dashboard" xml:space="preserve">
+    <value>Painel</value>
+  </data>
+  <data name="Shell_Scan" xml:space="preserve">
+    <value>Varredura</value>
+  </data>
+  <data name="Shell_Protection" xml:space="preserve">
+    <value>Proteção</value>
+  </data>
+  <data name="Shell_Threats" xml:space="preserve">
+    <value>Ameaças</value>
+  </data>
+  <data name="Shell_Quarantine" xml:space="preserve">
+    <value>Quarentena</value>
+  </data>
+  <data name="Shell_Reports" xml:space="preserve">
+    <value>Relatórios</value>
+  </data>
+  <data name="Shell_Updates" xml:space="preserve">
+    <value>Atualizações</value>
+  </data>
+  <data name="Shell_Settings" xml:space="preserve">
+    <value>Configurações</value>
+  </data>
+  <data name="Shell_Diagnostics" xml:space="preserve">
+    <value>Diagnóstico Avançado</value>
+  </data>
+
+  <data name="Shell_ReportsHeader" xml:space="preserve">
+    <value>RELATÓRIOS E HISTÓRICO</value>
+  </data>
+  <data name="Shell_ReportsDescription" xml:space="preserve">
+    <value>Acesse os relatórios e registros gerados pelas varreduras. Estas ações abrem os mesmos recursos já disponíveis no painel principal.</value>
+  </data>
+  <data name="Shell_UpdatesHeader" xml:space="preserve">
+    <value>ATUALIZAÇÕES</value>
+  </data>
+  <data name="Shell_UpdatesDescription" xml:space="preserve">
+    <value>Atualize a base de assinaturas. O comportamento é o mesmo do botão "Atualizar Assinaturas" do painel principal: o resultado aparece no log de execução.</value>
+  </data>
+  <data name="Shell_DiagnosticsHeader" xml:space="preserve">
+    <value>DIAGNÓSTICO AVANÇADO</value>
+  </data>
+  <data name="Shell_DiagnosticsDescription" xml:space="preserve">
+    <value>Informações técnicas, somente leitura: estado dos módulos de proteção e dados de versão/ambiente para suporte.</value>
+  </data>
+  <data name="Shell_DeferredNote" xml:space="preserve">
+    <value>A linha do tempo completa de eventos e ações chega em uma fase futura do Beta.</value>
+  </data>
+
+  <!-- Conjunto legado representativo (prova do padrão; migração completa NÃO
+       faz parte desta fase). -->
+  <data name="Legacy_FooterTagline" xml:space="preserve">
+    <value>DataVanger - Scanner defensivo local</value>
+  </data>
+  <data name="Legacy_StartScanSection" xml:space="preserve">
+    <value>INICIAR SCAN</value>
+  </data>
+  <data name="Legacy_ActionsSection" xml:space="preserve">
+    <value>AÇÕES</value>
+  </data>
+
+  <!-- Fase 05: Central de Remoção (Removal Center). Superfície de consentimento
+       e visualização; toda remediação passa pelo serviço/IPC/política. -->
+  <data name="RemovalCenter_WindowTitle" xml:space="preserve">
+    <value>DataVanger — Central de Remoção</value>
+  </data>
+  <data name="RemovalCenter_Header" xml:space="preserve">
+    <value>Central de Remoção</value>
+  </data>
+  <data name="RemovalCenter_RecommendedAction" xml:space="preserve">
+    <value>Ação recomendada</value>
+  </data>
+  <data name="RemovalCenter_Target" xml:space="preserve">
+    <value>Alvo</value>
+  </data>
+  <data name="RemovalCenter_Risk" xml:space="preserve">
+    <value>Risco</value>
+  </data>
+  <data name="RemovalCenter_PlanHeader" xml:space="preserve">
+    <value>Plano de remediação</value>
+  </data>
+  <data name="RemovalCenter_Proceed" xml:space="preserve">
+    <value>Prosseguir</value>
+  </data>
+  <data name="RemovalCenter_ConfirmRemove" xml:space="preserve">
+    <value>Confirmar remoção</value>
+  </data>
+  <data name="RemovalCenter_Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="RemovalCenter_Close" xml:space="preserve">
+    <value>Fechar</value>
+  </data>
+  <data name="RemovalCenter_ConfirmTitle" xml:space="preserve">
+    <value>Confirmar ação destrutiva</value>
+  </data>
+  <data name="RemovalCenter_ConfirmMessage" xml:space="preserve">
+    <value>Esta ação modifica o sistema. Itens reversíveis são colocados em quarentena antes da remoção. O padrão seguro é cancelar. Deseja continuar?</value>
+  </data>
+  <data name="RemovalCenter_EntryButton" xml:space="preserve">
+    <value>🧹  Central de Remoção</value>
+  </data>
+
+  <!-- Fase 07: onboarding de primeira execução. Conservador; só liga proteções. -->
+  <data name="Onboarding_WindowTitle" xml:space="preserve">
+    <value>DataVanger — Primeiros passos</value>
+  </data>
+  <data name="Onboarding_Header" xml:space="preserve">
+    <value>Bem-vindo ao DataVanger</value>
+  </data>
+  <data name="Onboarding_Intro" xml:space="preserve">
+    <value>Confirme as proteções recomendadas. Você pode alterar tudo depois em Configurações. Nenhuma proteção é desativada aqui.</value>
+  </data>
+  <data name="Onboarding_RealtimeOption" xml:space="preserve">
+    <value>Ativar proteção residente (monitor em tempo real)</value>
+  </data>
+  <data name="Onboarding_AutoQuarantine" xml:space="preserve">
+    <value>Quarentena automática de malware confirmado por hash conhecido</value>
+  </data>
+  <data name="Onboarding_StartWithWindows" xml:space="preserve">
+    <value>Iniciar com o Windows (opcional)</value>
+  </data>
+  <data name="Onboarding_Apply" xml:space="preserve">
+    <value>Aplicar e continuar</value>
+  </data>
+  <data name="Onboarding_Skip" xml:space="preserve">
+    <value>Pular</value>
+  </data>
+  <data name="Onboarding_SafetyNote" xml:space="preserve">
+    <value>Padrões conservadores. O onboarding só pode ligar proteções, nunca desligá-las; para desativar uma proteção use Configurações (com confirmação). A interface não requer privilégios de administrador.</value>
+  </data>
+</root>

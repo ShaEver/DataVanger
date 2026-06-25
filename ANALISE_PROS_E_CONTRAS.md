@@ -94,12 +94,13 @@ Windows-only.
 ### Maturidade / processo (os mais sérios)
 1. **Windows-only e sem prova de build/test verde fora do Windows.** O projeto admite
    que não pode reivindicar "STABLE". Toolchain exige Windows + .NET 8.
-2. **Sem CI/CD.** Validação é episódica e manual. As invariantes (catch anônimo,
-   `lock(qm)`, CRLF) são checadas por PowerShell manual. Risco real de
-   regressão/drift. Nenhum `.github/workflows`.
-3. **Código versionado como ZIP.** No repositório só existem `DataVanger.zip` + README;
-   o código está dentro do zip. Isso inviabiliza diff, review, CI e histórico —
-   provavelmente o problema mais urgente do estado atual do repo.
+2. **Sem CI/CD.** ✔️ *Endereçado:* adicionado `.github/workflows/ci.yml`
+   (Windows) que roda build + `dotnet test` + checagem das invariantes (catch
+   anônimo, `lock(qm)`, CRLF) a cada push/PR. Falta ainda gating obrigatório de
+   merge e badge.
+3. **Código versionado como ZIP.** ✔️ *Endereçado:* o código foi descompactado e
+   passou a ser versionado como árvore de arquivos na raiz do repositório (o zip
+   redundante foi removido), restaurando diff, review, CI e histórico.
 4. **Sinais de projeto pessoal / Alpha estendido.** Histórico git mínimo, autor único
    (bus-factor), mistura PT/EN em docs e comentários, roadmap aspiracional (fases
    11–22 documentadas, várias ainda "futuras"). Risco de abandono.

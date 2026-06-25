@@ -1,0 +1,70 @@
+<Window x:Class="DataVanger.QuarantineWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DataVanger — Quarentena"
+        Width="820" Height="640"
+        WindowStartupLocation="CenterOwner"
+        Background="#0d0d0d"
+        Foreground="#e0e0e0"
+        FontFamily="Segoe UI">
+  <Grid Margin="16">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Text="Arquivos em Quarentena" FontSize="15" FontWeight="SemiBold"
+               Foreground="#00bbdd" Margin="0,0,0,12"/>
+
+    <ListView x:Name="LvQuarantine" Grid.Row="1"
+              Background="#141414" Foreground="#ddd"
+              BorderBrush="#2a2a2a" BorderThickness="1"
+              SelectionMode="Single">
+      <ListView.View>
+        <GridView>
+          <GridViewColumn Header="Score" Width="58"
+                          DisplayMemberBinding="{Binding Score}"/>
+          <GridViewColumn Header="Caminho Original" Width="340"
+                          DisplayMemberBinding="{Binding OriginalPath}"/>
+          <GridViewColumn Header="Em quarentena em" Width="160"
+                          DisplayMemberBinding="{Binding QuarantinedAt}"/>
+          <GridViewColumn Header="Razões" Width="220"
+                          DisplayMemberBinding="{Binding Reasons}"/>
+        </GridView>
+      </ListView.View>
+    </ListView>
+
+    <Border Grid.Row="2" Background="#141414" BorderBrush="#2a2a2a" BorderThickness="1"
+            Margin="0,10,0,0" Padding="10">
+      <StackPanel>
+        <TextBlock Text="Detalhes do item selecionado" Foreground="#00bbdd" FontSize="12"
+                   FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBox x:Name="TxtDetail" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                 Background="Transparent" Foreground="#cccccc" BorderThickness="0"
+                 TextWrapping="Wrap" AcceptsReturn="True" Height="86"
+                 VerticalScrollBarVisibility="Auto"
+                 Text="Selecione um item para ver os detalhes."/>
+        <TextBlock Text="Operações de restauração nesta sessão (somente leitura)"
+                   Foreground="#888" FontSize="11" Margin="0,8,0,4"/>
+        <TextBox x:Name="TxtRecentOps" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                 Background="Transparent" Foreground="#9a9a9a" BorderThickness="0"
+                 FontFamily="Consolas" FontSize="11" TextWrapping="NoWrap" AcceptsReturn="True"
+                 Height="58" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                 Text="(nenhuma operação nesta sessão)"/>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button x:Name="BtnRestore" Content="↩  Restaurar Selecionado"
+              Width="190" Height="34" Margin="0,0,10,0"
+              Background="#996600" Foreground="#e0e0e0"
+              BorderThickness="0" Cursor="Hand"/>
+      <Button x:Name="BtnClose" Content="Fechar"
+              Width="90" Height="34"
+              Background="#252525" Foreground="#e0e0e0"
+              BorderThickness="0" Cursor="Hand"/>
+    </StackPanel>
+  </Grid>
+</Window>

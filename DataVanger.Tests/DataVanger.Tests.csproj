@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseAppHost>false</UseAppHost>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <SelfContained>false</SelfContained>
+    <PublishAot>false</PublishAot>
+    <EnableComHosting>false</EnableComHosting>
+    <UseIJWHost>false</UseIJWHost>
+    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit" Version="2.9.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageReference Include="coverlet.collector" Version="6.*">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <!-- Phase 02B: IpcAclTests directly inspects PipeSecurity / PipeAccessRule to
+         assert the named-pipe DACL model. These Windows ACL types live in
+         System.IO.Pipes.AccessControl, which is not in the default reference set;
+         the test project needs the same first-party package that
+         DataVanger.Infrastructure uses (matching version). The ACL assertions are
+         Windows-guarded (OperatingSystem.IsWindows()) inside the tests. -->
+    <PackageReference Include="System.IO.Pipes.AccessControl" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Preserve the project references actually needed by the migrated tests.
+         Secure Quarantine V2 (Phase 08) logic lives in the net8.0 Engine/
+         Infrastructure/Shared projects; they are listed explicitly so the
+         quarantine tests resolve deterministically. -->
+    <ProjectReference Include="..\DataVanger\DataVanger.csproj" />
+    <ProjectReference Include="..\DataVanger.Service\DataVanger.Service.csproj" />
+    <ProjectReference Include="..\DataVanger.Shared\DataVanger.Shared.csproj" />
+    <ProjectReference Include="..\DataVanger.Engine\DataVanger.Engine.csproj" />
+    <ProjectReference Include="..\DataVanger.Infrastructure\DataVanger.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
