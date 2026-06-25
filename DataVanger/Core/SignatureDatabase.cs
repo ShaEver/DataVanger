@@ -40,6 +40,13 @@ public sealed class SignatureDatabase
         LoadFile(userBlacklistPath, db.UserBlacklist);
         LoadFile(userWhitelistPath, db.UserWhitelist);
 
+        // Signed-feed outputs written by the update sink
+        // (DataVanger.Engine FileSystemSignatureUpdateSink). Additive and present only after a
+        // verified signed update has been applied; absent files are simply skipped. Filenames
+        // are coupled by agreement (Engine does not reference this UI layer).
+        LoadFile(Path.Combine(signatureRoot, "known_malicious_sha256.feed.txt"), db.KnownMalicious);
+        LoadFile(Path.Combine(signatureRoot, "known_safe_sha256.feed.txt"), db.KnownSafe);
+
         // Compatibilidade com os arquivos antigos da v1.0.
         if (!string.IsNullOrWhiteSpace(legacyBlacklistPath)) LoadFile(legacyBlacklistPath, db.UserBlacklist);
         if (!string.IsNullOrWhiteSpace(legacyWhitelistPath)) LoadFile(legacyWhitelistPath, db.UserWhitelist);
