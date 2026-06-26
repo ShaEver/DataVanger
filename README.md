@@ -155,6 +155,8 @@ Aplicado em `DataVanger/Core/ThreatClassificationPolicy.cs` e
   como adicionar módulos/testes, invariantes, regras de segurança.
 - [`docs/MODULE_STATUS_MATRIX.md`](docs/MODULE_STATUS_MATRIX.md) — status por módulo
   com referências de arquivo.
+- [`docs/SIGNED_UPDATES_OPERATOR_GUIDE.md`](docs/SIGNED_UPDATES_OPERATOR_GUIDE.md) — como
+  publicar e configurar um feed de assinaturas assinado (chaves, manifesto, HTTPS, settings).
 - [`docs/README_ORIGINAL_EN.md`](docs/README_ORIGINAL_EN.md) — README técnico
   original (em inglês).
 - `outputs/*` — especificações de fase e histórico.

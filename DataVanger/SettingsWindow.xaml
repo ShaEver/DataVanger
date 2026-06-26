@@ -52,6 +52,25 @@
         <TextBox x:Name="TxtSignatureUpdateUrl" Height="30" Margin="0,4,0,12"
                  Background="#111" Foreground="#ddd" BorderBrush="#333" Padding="8,4"/>
 
+        <TextBlock Text="— Feed de atualização assinado (opt-in; ative o toggle 'Atualizações assinadas via HTTP') —"
+                   Foreground="#00bbdd" FontSize="12" FontWeight="Bold" Margin="0,4,0,4" TextWrapping="Wrap"/>
+        <TextBlock Text="URL do feed assinado (HTTPS)" Foreground="#888" FontSize="12"/>
+        <TextBox x:Name="TxtSignedUpdateFeedUrl" Height="30" Margin="0,4,0,8"
+                 Background="#111" Foreground="#ddd" BorderBrush="#333" Padding="8,4"/>
+        <TextBlock Text="ID da chave fixada (Key ID)" Foreground="#888" FontSize="12"/>
+        <TextBox x:Name="TxtSignedUpdateKeyId" Height="30" Margin="0,4,0,8"
+                 Background="#111" Foreground="#ddd" BorderBrush="#333" Padding="8,4"/>
+        <TextBlock Text="Algoritmo (RSA-PSS-SHA256 ou ECDsa-P256-SHA256)" Foreground="#888" FontSize="12"/>
+        <TextBox x:Name="TxtSignedUpdateAlgorithm" Height="30" Margin="0,4,0,8"
+                 Background="#111" Foreground="#ddd" BorderBrush="#333" Padding="8,4"/>
+        <TextBlock Text="ID do feed" Foreground="#888" FontSize="12"/>
+        <TextBox x:Name="TxtSignedUpdateFeedId" Height="30" Margin="0,4,0,8"
+                 Background="#111" Foreground="#ddd" BorderBrush="#333" Padding="8,4"/>
+        <TextBlock Text="Chave pública fixada (PEM)" Foreground="#888" FontSize="12"/>
+        <TextBox x:Name="TxtSignedUpdatePublicKeyPem" Height="92" Margin="0,4,0,12" AcceptsReturn="True" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto" FontFamily="Consolas"
+                 Background="#111" Foreground="#ddd" BorderBrush="#333" Padding="8,4"/>
+
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>

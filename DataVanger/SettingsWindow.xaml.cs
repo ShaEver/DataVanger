@@ -26,6 +26,11 @@ public partial class SettingsWindow : Window
         TxtMinScoreReport.Text = _settings.MinScoreToReport.ToString();
         TxtMinScoreQuarantine.Text = _settings.MinScoreToQuarantine.ToString();
         TxtSignatureUpdateUrl.Text = _settings.SignatureUpdateUrl;
+        TxtSignedUpdateFeedUrl.Text = _settings.SignedUpdateFeedUrl;
+        TxtSignedUpdateKeyId.Text = _settings.SignedUpdateKeyId;
+        TxtSignedUpdateAlgorithm.Text = _settings.SignedUpdateAlgorithm;
+        TxtSignedUpdateFeedId.Text = _settings.SignedUpdateFeedId;
+        TxtSignedUpdatePublicKeyPem.Text = _settings.SignedUpdatePublicKeyPem;
         TxtYaraMaxScanSizeMB.Text = _settings.YaraMaxScanSizeMB.ToString();
         TxtArchiveMaxEntries.Text = _settings.ArchiveMaxEntries.ToString();
         TxtArchiveMaxDepth.Text = _settings.ArchiveMaxDepth.ToString();
@@ -98,6 +103,11 @@ public partial class SettingsWindow : Window
         _settings.MinScoreToReport = minReport;
         _settings.MinScoreToQuarantine = minQuarantine;
         _settings.SignatureUpdateUrl = TxtSignatureUpdateUrl.Text.Trim();
+        _settings.SignedUpdateFeedUrl = TxtSignedUpdateFeedUrl.Text.Trim();
+        _settings.SignedUpdateKeyId = TxtSignedUpdateKeyId.Text.Trim();
+        _settings.SignedUpdateAlgorithm = TxtSignedUpdateAlgorithm.Text.Trim();
+        _settings.SignedUpdateFeedId = TxtSignedUpdateFeedId.Text.Trim();
+        _settings.SignedUpdatePublicKeyPem = TxtSignedUpdatePublicKeyPem.Text.Trim();
         _settings.YaraMaxScanSizeMB = yaraMaxMb;
         _settings.ArchiveMaxEntries = archiveMaxEntries;
         _settings.ArchiveMaxDepth = archiveMaxDepth;
