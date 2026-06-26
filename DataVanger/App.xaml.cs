@@ -250,6 +250,18 @@ public partial class App : WpfApplication
     {
         var engine = new ScanEngine();
         var settings = AppSettings.Load(engine.SettingsPath);
+
+        // Prefer the verified signed feed when configured; otherwise fall back to the legacy
+        // unsigned URL fetch so existing setups keep working unchanged.
+        if (SignedFeedUpdateRunner.IsConfigured(settings))
+        {
+            var signed = await Task.Run(() => SignedFeedUpdateRunner.TryApply(
+                settings, engine.SignatureRoot, Path.Combine(engine.MgRoot, "UpdateState")));
+            if (signed is { Succeeded: false })
+                WriteStartupCrashLog(new InvalidOperationException("Atualização assinada falhou: " + signed.Message));
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(settings.SignatureUpdateUrl)) return;
 
         string destination = Path.Combine(engine.SignatureRoot, "known_malicious_sha256.txt");

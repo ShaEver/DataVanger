@@ -689,6 +689,23 @@ public partial class MainWindow : Window
     private async void OnUpdateSignatures(object sender, RoutedEventArgs e)
     {
         var settings = AppSettings.Load(_engine.SettingsPath);
+
+        // Verified signed feed takes precedence when configured.
+        if (SignedFeedUpdateRunner.IsConfigured(settings))
+        {
+            SetStatus("Atualizando assinaturas (feed assinado)...");
+            AppendLog("[Update] Verificando feed assinado...");
+            var result = await Task.Run(() => SignedFeedUpdateRunner.TryApply(
+                settings, _engine.SignatureRoot, Path.Combine(_engine.MgRoot, "UpdateState")));
+            bool okSigned = result is { Succeeded: true };
+            string msg = result?.Message ?? "Configuração inválida.";
+            AppendLog(okSigned ? "[Update] Feed assinado verificado e aplicado." : "[Update] Feed assinado: " + msg);
+            SetStatus(okSigned ? "Assinaturas atualizadas (assinado)." : "Falha na atualização assinada.");
+            MessageBox.Show(okSigned ? "Feed assinado verificado e aplicado com sucesso." : "Falha na atualização assinada: " + msg,
+                "DataVanger — Assinaturas", MessageBoxButton.OK, okSigned ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(settings.SignatureUpdateUrl))
         {
             MessageBox.Show("Nenhuma URL de atualização configurada. Abra Configurações e preencha o campo URL de assinaturas.",

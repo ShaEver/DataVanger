@@ -32,6 +32,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DataVanger.Shared\DataVanger.Shared.csproj" />
+    <!-- F1: the UI now composes the signed-update pipeline (SignedUpdateService +
+         HttpUpdateTransport + FileSystemSignatureUpdateSink) that lives in the Engine project. -->
+    <ProjectReference Include="..\DataVanger.Engine\DataVanger.Engine.csproj" />
   </ItemGroup>
 
   <!--

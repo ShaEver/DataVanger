@@ -72,6 +72,15 @@ public class AppSettings
     public int SignedUpdateMaxManifestSizeKB { get; set; } = 512;
     public int SignedUpdateMaxPackageSizeMB { get; set; } = 128;
 
+    // F1 composition — the pinned public key + identity used to verify the signed feed's
+    // manifest. A blank key/keyId keeps signed updates inert even when EnableHttpSignedUpdates
+    // is true (the runner then falls back to the legacy unsigned URL fetch). Additive optional
+    // fields: an absent value deserialises to these defaults, so no schema bump is required.
+    public string SignedUpdatePublicKeyPem { get; set; } = "";
+    public string SignedUpdateKeyId { get; set; } = "";
+    public string SignedUpdateAlgorithm { get; set; } = "RSA-PSS-SHA256";
+    public string SignedUpdateFeedId { get; set; } = "datavanger-default-feed";
+
     public int ArchiveMaxEntries { get; set; } = 600;
     public int ArchiveMaxDepth { get; set; } = 2;
     public int ArchiveMaxDecompressedMB { get; set; } = 512;
