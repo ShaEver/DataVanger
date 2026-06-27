@@ -304,7 +304,7 @@ public class ScanEngine : IScanEngine
                         });
                     }
                 }
-                catch { Inc(m => m.Errors++); }
+                catch (System.Exception) { Inc(m => m.Errors++); }
             }
         }
         profEnum.Dispose();
@@ -954,7 +954,7 @@ public class ScanEngine : IScanEngine
     private static SignatureVerificationResult GetSigInfo(string path, bool allowCatalog)
     {
         try { return WinTrust.VerifySignature(path, allowCatalog); }
-        catch { return SignatureVerificationResult.Unsigned; }
+        catch (System.Exception) { return SignatureVerificationResult.Unsigned; }
     }
 
     private static string ExtractYaraName(string description)

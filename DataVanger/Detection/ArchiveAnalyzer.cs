@@ -141,7 +141,7 @@ public static class ArchiveAnalyzer
                 result.Add("Archive", $"Scripts suspeitos detectados dentro do compactado: {suspiciousScripts}", delta, EvidenceStrength.Medium);
             }
         }
-        catch
+        catch (System.Exception)
         {
             // Corrupt/encrypted archive — leave result empty; engine will log resilience event.
         }

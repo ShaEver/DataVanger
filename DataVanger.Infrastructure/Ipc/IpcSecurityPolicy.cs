@@ -78,7 +78,7 @@ public static class IpcSecurityPolicy
             // structural validity probe (no file is touched).
             _ = Path.GetFullPath(path);
         }
-        catch
+        catch (System.Exception)
         {
             return false;
         }

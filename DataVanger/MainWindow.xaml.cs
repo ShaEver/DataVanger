@@ -371,7 +371,7 @@ public partial class MainWindow : Window
             _lastCpuSampleAt = now;
             _lastCpuTime = cpuNow;
         }
-        catch
+        catch (System.Exception)
         {
             TxtCpuRam.Text = "—";
         }
@@ -1071,7 +1071,7 @@ public partial class MainWindow : Window
             AppendLog($"[Realtime][Q] Conhecido malicioso movido para quarentena: {path}");
             return true;
         }
-        catch
+        catch (System.Exception)
         {
             return false;
         }

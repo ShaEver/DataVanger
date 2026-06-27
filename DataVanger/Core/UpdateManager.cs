@@ -45,7 +45,7 @@ public static class UpdateManager
             await File.WriteAllTextAsync(destinationPath + ".lastupdate.txt", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
             return true;
         }
-        catch
+        catch (System.Exception)
         {
             return false;
         }
@@ -92,7 +92,7 @@ public static class UpdateManager
             }
             return true;
         }
-        catch
+        catch (System.Exception)
         {
             return false;
         }

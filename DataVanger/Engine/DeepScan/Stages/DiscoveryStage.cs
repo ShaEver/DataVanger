@@ -52,7 +52,7 @@ public sealed class DiscoveryStage
                 {
                     item = new ScanWorkItem(new FileContentSource(file), depth: 0);
                 }
-                catch
+                catch (System.Exception)
                 {
                     context.Telemetry.IncError();
                     continue;

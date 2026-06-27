@@ -57,7 +57,7 @@ public sealed class BehavioralRuntimeRuleEvaluator
             EvaluatePersistence(observation, parentName, parentPath, results);
             EvaluateTamper(observation, parentName, parentPath, results);
         }
-        catch
+        catch (System.Exception)
         {
             // A rule failure must never crash the binding. Drop partial
             // results conservatively and return what we have.

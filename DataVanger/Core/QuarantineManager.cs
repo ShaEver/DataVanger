@@ -28,7 +28,7 @@ public class QuarantineManager
             var raw = File.ReadAllText(_indexPath);
             return JsonSerializer.Deserialize<Dictionary<string, QuarantineEntry>>(raw) ?? new();
         }
-        catch { return new(); }
+        catch (System.Exception) { return new(); }
     }
 
     private void SaveIndex(Dictionary<string, QuarantineEntry> index)
@@ -69,7 +69,7 @@ public class QuarantineManager
             SaveIndex(index);
             return id;
         }
-        catch
+        catch (System.Exception)
         {
             try { if (File.Exists(dst)) File.Delete(dst); }
             catch (Exception cleanupEx) when (cleanupEx is not OutOfMemoryException
@@ -115,7 +115,7 @@ public class QuarantineManager
             SaveIndex(index);
             return true;
         }
-        catch
+        catch (System.Exception)
         {
             return false;
         }

@@ -114,7 +114,7 @@ public sealed class InMemoryEtwRuntimeProvider : IEtwRuntimeProvider
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
             try { await StopAsync(CancellationToken.None).ConfigureAwait(false); }
-            catch { /* dispose never throws */ }
+            catch (System.Exception) { /* dispose never throws */ }
             Status = EtwProviderStatus.Stopped;
             _stoppedAtUtc ??= DateTimeOffset.UtcNow;
         }

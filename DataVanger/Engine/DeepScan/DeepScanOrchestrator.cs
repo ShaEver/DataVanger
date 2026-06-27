@@ -126,8 +126,8 @@ public sealed class DeepScanOrchestrator
         finally
         {
             // Make sure both auxiliary tasks observe completion.
-            try { await discoveryTask.ConfigureAwait(false); } catch { /* already logged */ }
-            try { await drainGate.ConfigureAwait(false); } catch { /* already logged */ }
+            try { await discoveryTask.ConfigureAwait(false); } catch (System.Exception) { /* already logged */ }
+            try { await drainGate.ConfigureAwait(false); } catch (System.Exception) { /* already logged */ }
         }
 
         return new DeepScanResult

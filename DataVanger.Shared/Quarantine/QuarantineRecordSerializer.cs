@@ -57,7 +57,7 @@ public static class QuarantineRecordSerializer
             if (canonical.Length == 0 || tag.Length == 0) return null;
             return new QuarantineStoredRecord(canonical, tag, envelope.MetadataIntegrityAlgorithm);
         }
-        catch
+        catch (System.Exception)
         {
             return null;
         }

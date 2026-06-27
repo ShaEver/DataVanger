@@ -90,7 +90,7 @@ public sealed class Sha256HashService : IHashService
             };
             return hash;
         }
-        catch
+        catch (System.Exception)
         {
             return null;
         }
@@ -140,7 +140,7 @@ public sealed class Sha256HashService : IHashService
                 && entry.Length == file.Length
                 && string.Equals(entry.SignatureFingerprint, signatureFingerprint, StringComparison.Ordinal);
         }
-        catch
+        catch (System.Exception)
         {
             return false;
         }
@@ -151,14 +151,14 @@ public sealed class Sha256HashService : IHashService
         try
         {
             var pruned = _cache.Values
-                .Where(x => { try { return File.Exists(x.Path); } catch { return false; } })
+                .Where(x => { try { return File.Exists(x.Path); } catch (System.Exception) { return false; } })
                 .OrderByDescending(x => x.LastScan)
                 .Take(250_000)
                 .ToList();
             var opts = new JsonSerializerOptions { WriteIndented = true };
             File.WriteAllText(_cachePath, JsonSerializer.Serialize(pruned, opts), Encoding.UTF8);
         }
-        catch { /* never let cache persistence crash a scan */ }
+        catch (System.Exception) { /* never let cache persistence crash a scan */ }
     }
 
     private void Load()
@@ -179,7 +179,7 @@ public sealed class Sha256HashService : IHashService
                 return;
             }
         }
-        catch
+        catch (System.Exception)
         {
             // Old format: path|ticks|length => hash
             try
@@ -206,7 +206,7 @@ public sealed class Sha256HashService : IHashService
                     }
                 }
             }
-            catch { _cache = new ConcurrentDictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase); }
+            catch (System.Exception) { _cache = new ConcurrentDictionary<string, HashCacheEntry>(StringComparer.OrdinalIgnoreCase); }
         }
     }
 

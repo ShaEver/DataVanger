@@ -48,7 +48,7 @@ public sealed class InMemoryEtwProvider : IEtwTelemetryProvider
         var handler = EventReceived;
         if (handler is null) return false;
         try { handler(ev); }
-        catch { /* never break the publisher because a subscriber threw */ }
+        catch (System.Exception) { /* never break the publisher because a subscriber threw */ }
         return true;
     }
 

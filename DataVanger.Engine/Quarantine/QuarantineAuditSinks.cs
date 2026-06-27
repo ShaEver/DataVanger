@@ -96,7 +96,7 @@ public sealed class RuntimeEventQuarantineAuditSink : IQuarantineAuditSink
             // do not await here and protect against any synchronous throw.
             _ = _publisher.PublishAsync(runtimeEvent, CancellationToken.None);
         }
-        catch
+        catch (System.Exception)
         {
             // Telemetry must never break a quarantine/restore operation.
         }

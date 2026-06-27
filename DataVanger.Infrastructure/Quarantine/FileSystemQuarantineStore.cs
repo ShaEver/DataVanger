@@ -76,7 +76,7 @@ public sealed class FileSystemQuarantineStore : IQuarantineStore
             return QuarantineRecordSerializer.ToStoredRecord(json);
         }
         catch (OperationCanceledException) { throw; }
-        catch { return null; }
+        catch (System.Exception) { return null; }
     }
 
     public Task<IReadOnlyList<string>> ListRecordIdsAsync(CancellationToken cancellationToken = default)
@@ -95,7 +95,7 @@ public sealed class FileSystemQuarantineStore : IQuarantineStore
     public Task DeletePayloadAsync(string payloadName, CancellationToken cancellationToken = default)
     {
         var path = Path.Combine(_payloadsDir, SafeLeaf(payloadName));
-        try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
+        try { if (File.Exists(path)) File.Delete(path); } catch (System.Exception) { /* best-effort */ }
         return Task.CompletedTask;
     }
 
@@ -108,9 +108,9 @@ public sealed class FileSystemQuarantineStore : IQuarantineStore
             await File.WriteAllBytesAsync(tempPath, bytes, cancellationToken).ConfigureAwait(false);
             File.Move(tempPath, finalPath, overwrite: true);
         }
-        catch
+        catch (System.Exception)
         {
-            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+            try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch (System.Exception) { /* best-effort cleanup */ }
             throw;
         }
     }

@@ -97,7 +97,7 @@ public static class ScriptAnalyzer
             string text = File.ReadAllText(path);
             return AnalyzeText(text, fi.Extension.ToLowerInvariant(), benignContainer);
         }
-        catch
+        catch (System.Exception)
         {
             return result;
         }
@@ -397,7 +397,7 @@ public sealed class LocalReputationDatabase
             {
                 string backup = _path + ".bak";
                 try { File.Replace(temp, _path, backup, ignoreMetadataErrors: true); }
-                catch { File.Copy(temp, _path, overwrite: true); TryDelete(temp); }
+                catch (System.Exception) { File.Copy(temp, _path, overwrite: true); TryDelete(temp); }
             }
             else
             {
@@ -433,7 +433,7 @@ public sealed class LocalReputationDatabase
                 .GroupBy(e => e.SHA256, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.OrderByDescending(e => e.LastSeenUtc).First(), StringComparer.OrdinalIgnoreCase);
         }
-        catch
+        catch (System.Exception)
         {
             TryBackupCorrupt(path);
             return new Dictionary<string, LocalReputationEntry>(StringComparer.OrdinalIgnoreCase);

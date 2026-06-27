@@ -134,7 +134,7 @@ internal static class WinTrust
             var cert = System.Security.Cryptography.X509Certificates.X509Certificate.CreateFromSignedFile(filePath);
             return cert.Subject;
         }
-        catch { return ""; }
+        catch (System.Exception) { return ""; }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

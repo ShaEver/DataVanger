@@ -65,7 +65,7 @@ public static class EtwRuntimeProviderHost
         {
             // Cooperative — return current status unchanged.
         }
-        catch
+        catch (System.Exception)
         {
             // Defensive — never crash the host.
         }

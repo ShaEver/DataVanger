@@ -68,7 +68,7 @@ public static class JunkCleaningPolicy
                 || full.EndsWith("\\winsxs") || full.Contains("\\winsxs\\")
                 || full.StartsWith(pf + "\\") || full.StartsWith(pf86 + "\\");
         }
-        catch { return true; }
+        catch (System.Exception) { return true; }
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public static class JunkCleaningPolicy
             bool safeExt = SafeExtensions.Contains(fi.Extension);
             return knownCache || safeExt;
         }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 
     /// <summary>
@@ -108,7 +108,7 @@ public static class JunkCleaningPolicy
             using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
             return true;
         }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 
     /// <summary>

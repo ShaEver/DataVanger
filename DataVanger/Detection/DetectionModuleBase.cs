@@ -38,7 +38,7 @@ public abstract class DetectionModuleBase : IDetectionModule
         {
             throw;
         }
-        catch
+        catch (System.Exception)
         {
             // Module resilience: a thrown exception in one module on one file
             // is recorded as zero evidence rather than as a scan-killing error.

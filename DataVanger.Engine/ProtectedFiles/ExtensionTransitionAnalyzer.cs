@@ -51,7 +51,7 @@ public static class ExtensionTransitionAnalyzer
             var ext = System.IO.Path.GetExtension(path);
             return string.IsNullOrEmpty(ext) ? string.Empty : ext.ToLowerInvariant();
         }
-        catch
+        catch (System.Exception)
         {
             return string.Empty;
         }

@@ -90,7 +90,7 @@ public static class BrowserExtensionIntelligence
     private static string SafeDirectoryName(string path)
     {
         try { return Path.GetDirectoryName(path) ?? ""; }
-        catch { return ""; }
+        catch (System.Exception) { return ""; }
     }
 
     private static readonly Regex ChromiumIdShape = new(
@@ -108,7 +108,7 @@ public static class BrowserExtensionIntelligence
             if (idDir is null) return "";
             return ChromiumIdShape.IsMatch(idDir.Name) ? idDir.Name : "";
         }
-        catch
+        catch (System.Exception)
         {
             return "";
         }

@@ -26,7 +26,7 @@ public sealed class FileTypeIdentificationStage : IPipelineStage
             await using var stream = item.Source.OpenRead();
             sniffed = FileTypeSniffer.Sniff(stream);
         }
-        catch
+        catch (System.Exception)
         {
             context.Telemetry.IncError();
         }

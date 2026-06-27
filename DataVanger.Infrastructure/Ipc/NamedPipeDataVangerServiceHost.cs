@@ -98,7 +98,7 @@ public sealed class NamedPipeDataVangerServiceHost
         {
             if (server.IsConnected)
             {
-                try { server.Disconnect(); } catch { /* best-effort */ }
+                try { server.Disconnect(); } catch (System.Exception) { /* best-effort */ }
             }
         }
 

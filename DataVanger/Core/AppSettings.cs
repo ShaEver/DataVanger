@@ -155,7 +155,7 @@ public class AppSettings
 
             return Migrate(loaded, loaded.SchemaVersion);
         }
-        catch
+        catch (System.Exception)
         {
             return new AppSettings();
         }

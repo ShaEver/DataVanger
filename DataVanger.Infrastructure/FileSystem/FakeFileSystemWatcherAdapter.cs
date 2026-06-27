@@ -157,6 +157,6 @@ public sealed class FakeFileSystemWatcherAdapter : IFileSystemWatcherAdapter
     {
         if (ev is null) return;
         try { EventReceived?.Invoke(ev); }
-        catch { /* defensive: never let sinks crash the fake */ }
+        catch (System.Exception) { /* defensive: never let sinks crash the fake */ }
     }
 }

@@ -32,7 +32,7 @@ public sealed class JsonSchedulerStore : ISchedulerStore
     public JsonSchedulerStore(string rootDirectory)
     {
         _root = rootDirectory ?? throw new ArgumentNullException(nameof(rootDirectory));
-        try { Directory.CreateDirectory(_root); } catch { /* read-only env: keep going */ }
+        try { Directory.CreateDirectory(_root); } catch (System.Exception) { /* read-only env: keep going */ }
     }
 
     public IReadOnlyList<ScheduledJobDefinition> LoadJobs()
@@ -72,7 +72,7 @@ public sealed class JsonSchedulerStore : ISchedulerStore
 
                 WriteList(HistoryPath, current);
             }
-            catch
+            catch (System.Exception)
             {
                 // History persistence must not crash the scheduler.
             }
@@ -91,7 +91,7 @@ public sealed class JsonSchedulerStore : ISchedulerStore
                 var parsed = JsonSerializer.Deserialize<List<T>>(raw, JsonOptions);
                 return parsed ?? new List<T>();
             }
-            catch
+            catch (System.Exception)
             {
                 // Corrupted/malformed payload — never bubble up as fatal.
                 return new List<T>();
@@ -123,7 +123,7 @@ public sealed class JsonSchedulerStore : ISchedulerStore
                     File.Move(tmp, path);
                 }
             }
-            catch
+            catch (System.Exception)
             {
                 // Persistence failure must not crash the scheduler.
                 // If replacement fails, the existing valid file is preserved.
@@ -141,7 +141,7 @@ public sealed class JsonSchedulerStore : ISchedulerStore
         {
             if (File.Exists(path)) File.Delete(path);
         }
-        catch
+        catch (System.Exception)
         {
             // best-effort cleanup only
         }

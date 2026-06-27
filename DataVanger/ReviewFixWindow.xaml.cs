@@ -74,7 +74,7 @@ public partial class ReviewFixWindow : Window
             return;
         }
         try { Clipboard.SetText(row.Finding.SHA256!); }
-        catch { /* clipboard pode falhar em sessões sem área de transferência */ }
+        catch (System.Exception) { /* clipboard pode falhar em sessões sem área de transferência */ }
     }
 
     private void OnDetails(object sender, RoutedEventArgs e)

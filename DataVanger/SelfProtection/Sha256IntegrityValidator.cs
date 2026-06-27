@@ -81,7 +81,7 @@ public sealed class Sha256IntegrityValidator
         var bytes = TryReadBytes(path, out _);
         if (bytes is null) return null;
         try { return Convert.ToHexString(SHA256.HashData(bytes)); }
-        catch { return null; }
+        catch (System.Exception) { return null; }
     }
 
     private byte[]? TryReadBytes(string path, out string? failureReason)

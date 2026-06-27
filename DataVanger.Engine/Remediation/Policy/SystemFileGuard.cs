@@ -47,7 +47,7 @@ public sealed class SystemFileGuard
         if (string.IsNullOrWhiteSpace(path)) return true; // unknown → conservative
         string normalized;
         try { normalized = Path.GetFullPath(path); }
-        catch { return true; } // unparseable → conservative
+        catch (System.Exception) { return true; } // unparseable → conservative
 
         var compare = NormalizeRoot(normalized);
         foreach (var root in _protectedRoots)
@@ -63,13 +63,13 @@ public sealed class SystemFileGuard
     private static string SafeGetFolder(Environment.SpecialFolder folder)
     {
         try { return Environment.GetFolderPath(folder); }
-        catch { return string.Empty; }
+        catch (System.Exception) { return string.Empty; }
     }
 
     private static string NormalizeRoot(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return string.Empty;
         try { return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar); }
-        catch { return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar); }
+        catch (System.Exception) { return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar); }
     }
 }

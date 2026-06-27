@@ -50,7 +50,7 @@ public sealed class AlternateDataStreamStage : IPipelineStage
                 }
             }
         }
-        catch
+        catch (System.Exception)
         {
             context.Telemetry.IncError();
         }

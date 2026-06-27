@@ -250,7 +250,7 @@ public static class HeuristicAnalyzer
             int want = (int)Math.Min(maxBytes, fs.Length);
             return want <= 0 ? 0 : fs.Read(buffer, 0, want);
         }
-        catch { return 0; }
+        catch (System.Exception) { return 0; }
     }
 
     private static double ByteEntropy(byte[] buf, int read)
@@ -272,7 +272,7 @@ public static class HeuristicAnalyzer
     {
         int limit;
         try { limit = (int)Math.Min(new FileInfo(path).Length, 256 * 1024); }
-        catch { return false; }
+        catch (System.Exception) { return false; }
         if (limit < 64) return false;
 
         byte[] buf = ArrayPool<byte>.Shared.Rent(limit);
@@ -317,6 +317,6 @@ public static class HeuristicAnalyzer
     private static bool HasAlternateDataStreams(string path)
     {
         try { return File.Exists(path + ":Zone.Identifier"); }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 }

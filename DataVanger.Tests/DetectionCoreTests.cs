@@ -644,7 +644,7 @@ File.WriteAllBytes(packedPath, suspiciousPeBytes);
 var (analysisResult, peFile) = DataVanger.Detection.PE.PeAnalyzer.AnalyzeWithFile(packedPath);
 Assert(peFile is not null && peFile.Sections.Count == 3,
     "AnalyzeWithFile must return the parsed PeFile with sections.");
-Assert(peFile.Sections.Any(s => s.Entropy >= 7.2),
+Assert(peFile!.Sections.Any(s => s.Entropy >= 7.2),
     "PeSectionAnalyzer must populate section.Entropy during the first parse.");
 Assert(analysisResult.Evidence.Count > 0 && analysisResult.Evidence.Any(e => e.Description.Contains("Alta entropia", StringComparison.OrdinalIgnoreCase)),
     "First parse must emit entropy evidence as usual.");

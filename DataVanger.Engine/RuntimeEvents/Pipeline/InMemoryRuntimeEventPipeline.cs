@@ -265,7 +265,7 @@ public sealed class InMemoryRuntimeEventPipeline : IRuntimeEventPipeline
     private static string SafeTypeName(IRuntimeEventConsumer consumer)
     {
         try { return consumer.GetType().FullName ?? consumer.GetType().Name; }
-        catch { return "<consumer>"; }
+        catch (System.Exception) { return "<consumer>"; }
     }
 
     private static string Trim(string? value)

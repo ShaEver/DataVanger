@@ -133,7 +133,7 @@ public sealed class RemediationSafePathPolicy : ISafePathPolicy
     private static string SafeGetFolder(Environment.SpecialFolder folder)
     {
         try { return Environment.GetFolderPath(folder); }
-        catch { return string.Empty; }
+        catch (System.Exception) { return string.Empty; }
     }
 
     private static string NormalizeRoot(string path)
@@ -144,7 +144,7 @@ public sealed class RemediationSafePathPolicy : ISafePathPolicy
             var full = Path.GetFullPath(path);
             return full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
-        catch
+        catch (System.Exception)
         {
             return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }

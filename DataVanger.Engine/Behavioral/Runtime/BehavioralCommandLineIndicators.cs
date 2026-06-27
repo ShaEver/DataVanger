@@ -85,7 +85,7 @@ public static class BehavioralCommandLineIndicators
             if (DynamicExecRx.IsMatch(cli)) tags.Add(TagDynamicExecution);
             if (PolicyBypassRx.IsMatch(cli)) tags.Add(TagPolicyBypass);
         }
-        catch
+        catch (System.Exception)
         {
             // Never crash the binding on a pathological command line.
         }
@@ -101,6 +101,6 @@ public static class BehavioralCommandLineIndicators
     {
         if (string.IsNullOrEmpty(commandLine)) return false;
         try { return LolBinSuspiciousRx.IsMatch(commandLine!); }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 }

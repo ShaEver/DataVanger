@@ -27,7 +27,7 @@ public static class FileTypeSniffer
             int chunk;
             while (read < head.Length && (chunk = stream.Read(head[read..])) > 0) read += chunk;
         }
-        catch
+        catch (System.Exception)
         {
             return SniffedFileType.Unknown;
         }

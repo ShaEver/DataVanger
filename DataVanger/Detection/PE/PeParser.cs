@@ -16,7 +16,7 @@ public static class PeParser
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
             return IsPeFile(fs);
         }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 
     public static bool IsPeFile(Stream stream)
@@ -34,7 +34,7 @@ public static class PeParser
             }
             finally { stream.Position = old; }
         }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 
     public static PeAnalysisResult Parse(string path)
@@ -214,7 +214,7 @@ public static class PeParser
     {
         if (count <= 0 || offset < 0) return Array.Empty<byte>();
         long length;
-        try { length = stream.Length; } catch { return Array.Empty<byte>(); }
+        try { length = stream.Length; } catch (System.Exception) { return Array.Empty<byte>(); }
         if (offset >= length) return Array.Empty<byte>();
         int safeCount = (int)Math.Min(count, length - offset);
         var buffer = new byte[safeCount];

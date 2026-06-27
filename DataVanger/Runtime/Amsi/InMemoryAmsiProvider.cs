@@ -93,7 +93,7 @@ public sealed class InMemoryAmsiProvider : IAmsiTelemetryProvider
                 timestampUtc: DateTime.UtcNow));
             return 1;
         }
-        catch { return 0; }
+        catch (System.Exception) { return 0; }
     }
 
     public void Dispose()

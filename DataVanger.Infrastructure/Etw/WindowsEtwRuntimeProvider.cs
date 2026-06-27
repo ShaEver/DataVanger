@@ -157,7 +157,7 @@ public sealed class WindowsEtwRuntimeProvider : IEtwRuntimeProvider
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
         {
             try { await StopInternalAsync(CancellationToken.None).ConfigureAwait(false); }
-            catch { /* dispose never throws */ }
+            catch (System.Exception) { /* dispose never throws */ }
             Status = EtwProviderStatus.Stopped;
             _stoppedAtUtc ??= DateTimeOffset.UtcNow;
         }
@@ -179,7 +179,7 @@ public sealed class WindowsEtwRuntimeProvider : IEtwRuntimeProvider
         {
             await PublishHealthSafe(EtwProviderStatus.Stopped, "Windows ETW provider stopped.", cancellationToken).ConfigureAwait(false);
         }
-        catch
+        catch (System.Exception)
         {
             // Stop never throws.
         }
@@ -485,7 +485,7 @@ public sealed class WindowsEtwRuntimeProvider : IEtwRuntimeProvider
                 var text = Convert.ToString(value);
                 if (!string.IsNullOrWhiteSpace(text)) return text;
             }
-            catch
+            catch (System.Exception)
             {
                 // Payload schemas differ by provider/version.
             }
@@ -506,7 +506,7 @@ public sealed class WindowsEtwRuntimeProvider : IEtwRuntimeProvider
                 if (value is long l && l <= int.MaxValue && l >= int.MinValue) return (int)l;
                 if (int.TryParse(Convert.ToString(value), out var parsed)) return parsed;
             }
-            catch
+            catch (System.Exception)
             {
                 // Payload schemas differ by provider/version.
             }
@@ -518,7 +518,7 @@ public sealed class WindowsEtwRuntimeProvider : IEtwRuntimeProvider
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
         try { return Path.GetFileName(path); }
-        catch { return null; }
+        catch (System.Exception) { return null; }
     }
 
     private static bool IsPermissionDenied(Exception ex)

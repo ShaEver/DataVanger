@@ -39,7 +39,7 @@ public sealed class PeDetectionModule : DetectionModuleBase
                 && target.File.Length <= 256L * 1024 * 1024
                 && PE.PeAnalyzer.IsPeFile(target.FullPath);
         }
-        catch { return false; }
+        catch (System.Exception) { return false; }
     }
 
     protected override IReadOnlyList<Evidence> Analyze(ScanTarget target, ScanContext context, CancellationToken cancellationToken)

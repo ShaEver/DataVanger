@@ -155,7 +155,7 @@ public partial class App : WpfApplication
             File.AppendAllText(StartupCrashLogPath,
                 $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]\n{ex}\n\n");
         }
-        catch
+        catch (System.Exception)
         {
             // Nunca deixar o logger quebrar o app.
         }

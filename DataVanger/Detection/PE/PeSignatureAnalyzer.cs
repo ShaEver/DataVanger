@@ -24,7 +24,7 @@ public static class PeSignatureAnalyzer
                 result.Add("PE sem assinatura Authenticode válida", 0, EvidenceStrength.Info);
             }
         }
-        catch
+        catch (System.Exception)
         {
             result.Add("Falha ao validar assinatura Authenticode", 0, EvidenceStrength.Info);
         }

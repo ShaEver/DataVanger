@@ -73,7 +73,7 @@ public static class EtwCommandLineSanitizer
             working = UrlCredentialsRx.Replace(working, m =>
                 $"{m.Groups["scheme"].Value}{m.Groups["user"].Value}:{RedactedToken}@");
         }
-        catch
+        catch (System.Exception)
         {
             // Sanitizer NEVER crashes the provider. On failure, fall
             // back to a hard-redacted form so secrets cannot leak even

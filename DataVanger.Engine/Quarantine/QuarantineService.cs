@@ -283,7 +283,7 @@ public sealed class QuarantineService : IQuarantineService, IQuarantineIndex
         {
             record = QuarantineRecordSerializer.DeserializeRecord(stored.CanonicalMetadata);
         }
-        catch
+        catch (System.Exception)
         {
             return Integrity(QuarantineStatus.MetadataTampered, quarantineId, false, false, QuarantineRecordState.Corrupt,
                 "Record could not be deserialized.");
@@ -373,7 +373,7 @@ public sealed class QuarantineService : IQuarantineService, IQuarantineIndex
 
         QuarantineRecord record;
         try { record = QuarantineRecordSerializer.DeserializeRecord(stored.CanonicalMetadata); }
-        catch { return RestoreFail(QuarantineStatus.MetadataTampered, "Record could not be deserialized.", request.QuarantineId); }
+        catch (System.Exception) { return RestoreFail(QuarantineStatus.MetadataTampered, "Record could not be deserialized.", request.QuarantineId); }
 
         bool payloadPresent = await _store.PayloadExistsAsync(record.PayloadName, cancellationToken).ConfigureAwait(false);
         if (!payloadPresent)
@@ -505,7 +505,7 @@ public sealed class QuarantineService : IQuarantineService, IQuarantineIndex
             if (intact)
             {
                 try { record = QuarantineRecordSerializer.DeserializeRecord(stored.CanonicalMetadata); }
-                catch { record = null; }
+                catch (System.Exception) { record = null; }
             }
 
             if (record is null)
@@ -539,7 +539,7 @@ public sealed class QuarantineService : IQuarantineService, IQuarantineIndex
             return null; // do not return unauthenticated metadata
 
         try { return QuarantineRecordSerializer.DeserializeRecord(stored.CanonicalMetadata); }
-        catch { return null; }
+        catch (System.Exception) { return null; }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -554,24 +554,24 @@ public sealed class QuarantineService : IQuarantineService, IQuarantineIndex
     {
         record.RecordState = state;
         try { await WriteRecordAsync(record, metadataKey, ct).ConfigureAwait(false); }
-        catch { /* state-update persistence is best-effort and never fatal */ }
+        catch (System.Exception) { /* state-update persistence is best-effort and never fatal */ }
     }
 
     private async Task<QuarantineStoredRecord?> ReadStoredAsync(string id, CancellationToken ct)
     {
         try { return await _store.ReadRecordAsync(id, ct).ConfigureAwait(false); }
-        catch { return null; }
+        catch (System.Exception) { return null; }
     }
 
     private async Task SafeDeletePayloadAsync(string payloadName)
     {
         try { await _store.DeletePayloadAsync(payloadName, CancellationToken.None).ConfigureAwait(false); }
-        catch { /* cleanup is best-effort */ }
+        catch (System.Exception) { /* cleanup is best-effort */ }
     }
 
     private static void TryDeleteTemp(string path)
     {
-        try { if (File.Exists(path)) File.Delete(path); } catch { /* best-effort */ }
+        try { if (File.Exists(path)) File.Delete(path); } catch (System.Exception) { /* best-effort */ }
     }
 
     private QuarantineResult Fail(QuarantineStatus status, string message, QuarantineThreatClassification cls, string? id = null)
@@ -616,7 +616,7 @@ public sealed class QuarantineService : IQuarantineService, IQuarantineIndex
                 Message = message,
             });
         }
-        catch
+        catch (System.Exception)
         {
             // Audit telemetry must never break a quarantine operation.
         }

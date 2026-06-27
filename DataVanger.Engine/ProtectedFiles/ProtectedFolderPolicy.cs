@@ -125,7 +125,7 @@ public sealed class ProtectedFolderPolicy
             var dir = System.IO.Path.GetDirectoryName(path);
             return string.IsNullOrEmpty(dir) ? null : dir;
         }
-        catch
+        catch (System.Exception)
         {
             return null;
         }

@@ -39,7 +39,7 @@ public sealed class ResilientFileSystemService : IFileSystemService
     {
         var queue = new Queue<(DirectoryInfo Dir, int Depth)>();
         try { queue.Enqueue((new DirectoryInfo(root), 0)); }
-        catch { yield break; }
+        catch (System.Exception) { yield break; }
 
         while (queue.Count > 0)
         {

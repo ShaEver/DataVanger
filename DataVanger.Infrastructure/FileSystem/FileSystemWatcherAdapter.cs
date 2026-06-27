@@ -138,7 +138,7 @@ public sealed class FileSystemWatcherAdapter : IFileSystemWatcherAdapter
             {
                 if (_watcher is not null) _watcher.EnableRaisingEvents = false;
             }
-            catch
+            catch (System.Exception)
             {
                 // Defensive: never propagate from Stop.
             }
@@ -173,7 +173,7 @@ public sealed class FileSystemWatcherAdapter : IFileSystemWatcherAdapter
                     _watcher = null;
                 }
             }
-            catch
+            catch (System.Exception)
             {
                 // Best-effort teardown only.
             }
@@ -236,7 +236,7 @@ public sealed class FileSystemWatcherAdapter : IFileSystemWatcherAdapter
         {
             EventReceived?.Invoke(ev);
         }
-        catch
+        catch (System.Exception)
         {
             // The orchestrator is the single subscriber and must never
             // throw back into the watcher — but defend against a buggy

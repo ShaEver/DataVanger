@@ -100,7 +100,7 @@ public sealed class CleanerEngine
                     res.DeletedFiles++;
                     res.DeletedBytes += len;
                 }
-                catch
+                catch (System.Exception)
                 {
                     res.SkippedFiles++;
                 }

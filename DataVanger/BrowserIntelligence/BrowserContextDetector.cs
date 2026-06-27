@@ -160,7 +160,7 @@ public static class BrowserContextDetector
             int next = fullPath.IndexOf('\\', end);
             return next < 0 ? fullPath.Substring(0, end).TrimEnd('\\') : fullPath.Substring(0, next);
         }
-        catch
+        catch (System.Exception)
         {
             return "";
         }

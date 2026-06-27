@@ -66,7 +66,7 @@ public sealed class RecoveryManager
                 description: $"Recovery {outcome}: {description}",
                 timestampUtc: action.TimestampUtc));
         }
-        catch { /* sink must never crash the recovery path */ }
+        catch (System.Exception) { /* sink must never crash the recovery path */ }
 
         return action;
     }

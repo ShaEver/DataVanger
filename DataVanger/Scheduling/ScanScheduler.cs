@@ -325,7 +325,7 @@ public sealed class ScanScheduler
         {
             return job.Trigger.ComputeNextRunUtc(_clock.UtcNow, st.LastRunUtc);
         }
-        catch
+        catch (System.Exception)
         {
             return null;
         }
@@ -364,7 +364,7 @@ public sealed class ScanScheduler
                 }
             }
         }
-        catch
+        catch (System.Exception)
         {
             // Corrupt store: start fresh in memory; persistence layer will
             // overwrite with a clean payload on the next change.
@@ -387,7 +387,7 @@ public sealed class ScanScheduler
             _store.SaveJobs(_jobs.Values.ToList());
             _store.SaveStatus(_status.Values.ToList());
         }
-        catch
+        catch (System.Exception)
         {
             // Already swallowed inside the store; defensive belt-and-braces.
         }
@@ -395,7 +395,7 @@ public sealed class ScanScheduler
 
     private void SafeAppendHistory(ScheduledJobExecution exec)
     {
-        try { _store.AppendHistory(exec); } catch { /* never fatal */ }
+        try { _store.AppendHistory(exec); } catch (System.Exception) { /* never fatal */ }
     }
 
     private static ScheduledJobStatus Clone(ScheduledJobStatus st) => new()
@@ -413,6 +413,6 @@ public sealed class ScanScheduler
 
     private void SafeLog(string msg)
     {
-        try { _log?.Invoke(msg); } catch { /* logging must not crash scheduler */ }
+        try { _log?.Invoke(msg); } catch (System.Exception) { /* logging must not crash scheduler */ }
     }
 }

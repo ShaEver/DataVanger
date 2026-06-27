@@ -34,7 +34,7 @@ public sealed class HashingStage : IPipelineStage
             context.Telemetry.IncTimeout();
             item.DispositionReason = "hash timeout";
         }
-        catch
+        catch (System.Exception)
         {
             context.Telemetry.IncError();
         }

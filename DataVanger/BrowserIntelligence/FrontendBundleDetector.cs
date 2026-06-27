@@ -96,7 +96,7 @@ public static class FrontendBundleDetector
             profile.MarkersFound = markersFound;
             profile.IsRecognisedBundle = markersFound.Count > 0 || chunkLooking >= 2;
         }
-        catch
+        catch (System.Exception)
         {
             // Best-effort — never throw out of detection.
         }
@@ -110,7 +110,7 @@ public static class FrontendBundleDetector
         {
             return Directory.GetFiles(root, "*", SearchOption.TopDirectoryOnly);
         }
-        catch
+        catch (System.Exception)
         {
             return Array.Empty<string>();
         }
@@ -135,7 +135,7 @@ public static class FrontendBundleDetector
             int read = fs.Read(buf, 0, length);
             return System.Text.Encoding.UTF8.GetString(buf, 0, read);
         }
-        catch
+        catch (System.Exception)
         {
             return "";
         }

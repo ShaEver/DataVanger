@@ -93,7 +93,7 @@ public static class QuarantinePathPolicy
         if (string.IsNullOrWhiteSpace(root)) return false;
         string normalizedRoot;
         try { normalizedRoot = Path.GetFullPath(root); }
-        catch { return false; }
+        catch (System.Exception) { return false; }
 
         normalizedRoot = normalizedRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;

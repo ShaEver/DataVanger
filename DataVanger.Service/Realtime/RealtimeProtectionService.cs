@@ -238,7 +238,7 @@ public sealed class RealtimeProtectionService : IRealtimeProtectionService
 
         foreach (var w in snapshot)
         {
-            try { w.Stop(); } catch { Interlocked.Increment(ref _warnings); }
+            try { w.Stop(); } catch (System.Exception) { Interlocked.Increment(ref _warnings); }
         }
 
         lock (_gate)
@@ -268,7 +268,7 @@ public sealed class RealtimeProtectionService : IRealtimeProtectionService
         }
         foreach (var w in snapshot)
         {
-            try { w.Dispose(); } catch { /* best-effort */ }
+            try { w.Dispose(); } catch (System.Exception) { /* best-effort */ }
         }
         lock (_gate)
         {
@@ -558,7 +558,7 @@ public sealed class RealtimeProtectionService : IRealtimeProtectionService
     private void Publish(RealtimeProtectionEvent ev)
     {
         try { _sink.Publish(ev); }
-        catch
+        catch (System.Exception)
         {
             Interlocked.Increment(ref _warnings);
         }

@@ -79,7 +79,7 @@ public static class EtwPowerShellIndicators
             if (DynamicExecRx.IsMatch(cli)) tags.Add(TagDynamicExecution);
             if (PolicyBypassRx.IsMatch(cli)) tags.Add(TagPolicyBypass);
         }
-        catch
+        catch (System.Exception)
         {
             // Indicator detector NEVER crashes the provider. Worst case
             // we return only the process tag and move on.

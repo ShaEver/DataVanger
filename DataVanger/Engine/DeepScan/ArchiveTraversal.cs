@@ -112,7 +112,7 @@ public static class ArchiveTraversal
             archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: true);
             return true;
         }
-        catch
+        catch (System.Exception)
         {
             archive = null!;
             return false;
@@ -163,7 +163,7 @@ public static class ArchiveTraversal
             }
             return ms.ToArray();
         }
-        catch
+        catch (System.Exception)
         {
             return null;
         }

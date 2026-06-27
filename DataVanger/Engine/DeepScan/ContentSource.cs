@@ -40,7 +40,7 @@ public sealed class FileContentSource : ContentSource
 
     private static long SafeLength(FileInfo f)
     {
-        try { return f.Exists ? f.Length : 0; } catch { return 0; }
+        try { return f.Exists ? f.Length : 0; } catch (System.Exception) { return 0; }
     }
 }
 

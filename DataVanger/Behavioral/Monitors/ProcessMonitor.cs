@@ -60,7 +60,7 @@ public sealed class ProcessMonitor : IDisposable
                 return;
             }
             try { Snapshot(emit: true); }
-            catch { /* never fail the loop */ }
+            catch (System.Exception) { /* never fail the loop */ }
         }
     }
 
