@@ -159,6 +159,5 @@ Aplicado em `DataVanger/Core/ThreatClassificationPolicy.cs` e
   publicar e configurar um feed de assinaturas assinado (chaves, manifesto, HTTPS, settings).
 - [`docs/README_ORIGINAL_EN.md`](docs/README_ORIGINAL_EN.md) — README técnico
   original (em inglês).
-- `outputs/*` — especificações de fase e histórico.
 - [`ANALISE_PROS_E_CONTRAS.md`](ANALISE_PROS_E_CONTRAS.md) — análise de pontos
   positivos e negativos do projeto.
