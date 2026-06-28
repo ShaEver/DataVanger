@@ -133,12 +133,48 @@ public static class PathTaxonomy
         || fullLower.Contains("\\microsoft office\\root\\office")
         || fullLower.Contains("\\edge\\user data\\")
         || fullLower.Contains("\\chrome\\user data\\")
-        || fullLower.Contains("\\claude extensions\\");
+        || fullLower.Contains("\\claude extensions\\")
+        // Per-user app install root + common Electron/desktop apps that ship their
+        // own (unsigned) helper binaries/scripts under AppData. Isolated heuristics
+        // here are suppressed (strong behaviour like masquerade/double-extension is
+        // NOT — see HeuristicAnalyzer.HasStrongMalwareBehavior).
+        || fullLower.Contains("\\appdata\\local\\programs\\")
+        || fullLower.Contains("\\appdata\\local\\slack\\")
+        || fullLower.Contains("\\appdata\\local\\microsoft\\teams\\")
+        || fullLower.Contains("\\appdata\\local\\githubdesktop\\")
+        || fullLower.Contains("\\appdata\\roaming\\spotify\\");
 
     public static bool IsTempRandomScript(string fullLower, string name, string ext) =>
         (ext is ".js" or ".jse" or ".vbs" or ".wsf" or ".ps1" or ".hta")
         && fullLower.Contains("\\temp\\")
         && Regex.IsMatch(name, @"^[{(]?[0-9a-f]{8}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{4}[-_][0-9a-f]{12}[)}]?\.tmp\.");
+
+    /// <summary>
+    /// True when a critical system-process executable sits in its genuine canonical
+    /// home. The masquerading heuristic must NOT fire there: <c>explorer.exe</c>
+    /// legitimately lives in the Windows root (and SysWOW64), not System32, so the
+    /// real shell was being false-flagged. Every other critical name lives under
+    /// System32/SysWOW64. Resolved against the REAL %WinDir% (exact path match),
+    /// so a look-alike such as C:\Temp\explorer.exe returns false (still flagged).
+    /// </summary>
+    public static bool IsSystemExeInCanonicalHome(string fullLower, string nameLower)
+        => IsSystemExeInCanonicalHome(fullLower, nameLower, _tpWindir);
+
+    // The windir-relative overload is exposed for OS-independent unit tests (the real
+    // %WinDir% is empty off-Windows); production uses the resolved _tpWindir.
+    internal static bool IsSystemExeInCanonicalHome(string fullLower, string nameLower, string windirPrefixLower)
+    {
+        if (string.IsNullOrEmpty(fullLower) || string.IsNullOrEmpty(nameLower) || string.IsNullOrEmpty(windirPrefixLower))
+            return false;
+        string w = windirPrefixLower.EndsWith("\\") ? windirPrefixLower : windirPrefixLower + "\\";
+
+        if (nameLower == "explorer.exe")
+            return fullLower == w + "explorer.exe"
+                || fullLower == w + "syswow64\\explorer.exe";
+
+        return fullLower == w + "system32\\" + nameLower
+            || fullLower == w + "syswow64\\" + nameLower;
+    }
 }
 
 /// <summary>

@@ -75,7 +75,7 @@ public static class HeuristicAnalyzer
                 EvidenceStrength.Low);
 
         if (full.Contains("\\appdata\\") && new[] { ".exe", ".scr", ".com", ".bat", ".cmd", ".ps1", ".vbs", ".js", ".hta", ".dll" }.Contains(ext)
-            && !benignScriptContainer)
+            && !benignScriptContainer && !PathTaxonomy.IsTrustedPath(full))
             result.Add("Heuristic", "Executável/script em AppData",
                 ScriptExt.Contains(ext) ? 1 : 2, EvidenceStrength.Low);
 
@@ -117,7 +117,10 @@ public static class HeuristicAnalyzer
 
                 double e = ByteEntropy(sample, read);
                 if (e > 7.2 && userWritable)
-                    result.Add("Heuristic", $"Entropia alta ({e:F4} b/B - possível packing)", 2, EvidenceStrength.Medium);
+                    // Descriptive only (Score 0): high entropy alone over-fires on
+                    // legitimately packed software (NSIS/Inno installers, Electron/.NET
+                    // bundles). It contributes context, never score, on its own.
+                    result.Add("Heuristic", $"Entropia alta ({e:F4} b/B - possível packing)", 0, EvidenceStrength.Info);
 
                 if (ExeExt.Contains(ext) && userWritable && HasAppendedData(sample, read, file.Length))
                     result.Add("Heuristic", "Dados anexados ao PE em local gravável", 1, EvidenceStrength.Low);
@@ -134,7 +137,9 @@ public static class HeuristicAnalyzer
             {
                 double hours = (DateTime.Now - file.CreationTime).TotalHours;
                 if (hours < 48)
-                    result.Add("Heuristic", $"Arquivo recente em local gravável (criado há {hours:F1}h)", 1, EvidenceStrength.Low);
+                    // Descriptive only (Score 0): recency alone is not risk — freshly
+                    // installed legitimate software trips it. Context, not score.
+                    result.Add("Heuristic", $"Arquivo recente em local gravável (criado há {hours:F1}h)", 0, EvidenceStrength.Info);
             }
             catch (UnauthorizedAccessException)
             {
@@ -155,7 +160,8 @@ public static class HeuristicAnalyzer
                     ext == ".sys" ? 4 : 2, EvidenceStrength.Medium);
         }
 
-        if (ExeExt.Contains(ext) && SystemExecutableNames.Contains(name) && !protectedWindows)
+        if (ExeExt.Contains(ext) && SystemExecutableNames.Contains(name) && !protectedWindows
+            && !PathTaxonomy.IsSystemExeInCanonicalHome(full, name))
             result.Add("Heuristic",
                 $"Nome de processo de sistema ({name}) fora de System32/SysWOW64 - possível mascaramento",
                 7, EvidenceStrength.High);
@@ -189,7 +195,10 @@ public static class HeuristicAnalyzer
         bool protectedWindows = PathTaxonomy.IsProtectedWindowsPath(full);
         bool microsoftPath = PathTaxonomy.IsMicrosoftProductPath(full);
         bool userWritable = PathTaxonomy.IsUserWritableRiskPath(full);
-        bool benignContainer = PathTaxonomy.IsKnownBenignScriptContainer(full);
+        // Known vendor app dirs (Brave/Discord/Spotify/Steam/Google/Microsoft under
+        // LocalAppData) count as benign containers too: isolated heuristics there are
+        // suppressed, but strong behaviour (masquerade/double-extension) still passes.
+        bool benignContainer = PathTaxonomy.IsKnownBenignScriptContainer(full) || PathTaxonomy.IsTrustedPath(full);
 
         bool strongBehavior = HasStrongMalwareBehavior(heuristicResult.Evidence);
 

@@ -217,8 +217,31 @@ public static class TargetDiscovery
         yield return Path.Combine(app, @"Mozilla\Firefox\Profiles");
     }
 
+    // DataVanger's own signature data (the seeded user signature root and the
+    // app-bundled Signatures.default folder) must never be a scan target: the
+    // lightweight YARA engine matches by substring, so scanning a rule file could
+    // self-match, and these are product data, not user content.
+    private static readonly string _signatureRootLower = ComputeSignatureRootLower();
+
+    private static string ComputeSignatureRootLower()
+    {
+        try
+        {
+            var root = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "DataVanger", "Signatures");
+            return root.ToLowerInvariant().TrimEnd('\\') + "\\";
+        }
+        catch (Exception) { return ""; }
+    }
+
+    private static bool IsProductSignatureData(string fullLower) =>
+        fullLower.Contains("\\signatures.default\\")
+        || (!string.IsNullOrEmpty(_signatureRootLower) && fullLower.StartsWith(_signatureRootLower, StringComparison.Ordinal));
+
     public static bool IsExcludedPath(string fullLower, AppSettings settings)
     {
+        if (IsProductSignatureData(fullLower)) return true;
+
         foreach (var raw in settings.ExcludedPaths.Where(x => !string.IsNullOrWhiteSpace(x)))
         {
             try

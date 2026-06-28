@@ -118,7 +118,9 @@ public static class DefaultSignaturePack
 
         string destDir = Path.Combine(signatureRoot, "yara_rules");
         Directory.CreateDirectory(destDir);
-        foreach (var src in Directory.GetFiles(srcDir, "*.yar"))
+        foreach (var src in Directory.EnumerateFiles(srcDir, "*.*")
+                     .Where(p => p.EndsWith(".yar", StringComparison.OrdinalIgnoreCase)
+                              || p.EndsWith(".yara", StringComparison.OrdinalIgnoreCase)))
         {
             string dest = Path.Combine(destDir, Path.GetFileName(src));
             if (!File.Exists(dest)) File.Copy(src, dest);
