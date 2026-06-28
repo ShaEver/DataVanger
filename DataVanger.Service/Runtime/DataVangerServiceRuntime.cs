@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using DataVanger.Engine.Behavioral.Runtime;
 using DataVanger.Infrastructure.Etw;
+using DataVanger.Service.Behavioral;
 using DataVanger.Service.RuntimeEvents;
+using DataVanger.Shared.Behavioral.Runtime;
 using DataVanger.Shared.Etw;
 using DataVanger.Shared.RuntimeEvents;
 using DataVanger.Shared.Service;
@@ -51,6 +54,14 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     private IRuntimeEventPipeline? _runtimeEventPipeline;
     private EtwProviderStatus _etwStatus = EtwProviderStatus.Disabled;
     private string? _etwLastError;
+
+    // Behavioral runtime correlation (opt-in). Bound to the SAME runtime-event
+    // pipeline the ETW provider publishes into, so real process telemetry is
+    // correlated into evidence-only behavioral signals. Passive/heuristic-only;
+    // never confirms malware, never acts. Null unless ETW telemetry is enabled
+    // and the binding was selected.
+    private BehavioralRuntimeBinding? _behavioralBinding;
+    private BehavioralRuntimeBindingState _behavioralState = BehavioralRuntimeBindingState.Disabled;
 
     public DataVangerServiceRuntime()
         : this(DataVangerServiceConfiguration.SafeDefaults(), DataVangerRuntimeMode.Development, Array.Empty<string>())
@@ -151,6 +162,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     {
         IRuntimeEventPipeline? pipeline = null;
         IEtwRuntimeProvider? provider = null;
+        BehavioralRuntimeBinding? binding = null;
         try
         {
             var etwConfig = new EtwProviderConfiguration
@@ -168,6 +180,31 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
 
             pipeline = RuntimeEventPipelineFactory.CreateDevelopmentPipeline();
             provider = EtwRuntimeProviderHost.CreateProvider(pipeline, etwConfig, _etwPlatformProbe);
+
+            // Bind the behavioral runtime correlation engine to the SAME pipeline
+            // BEFORE the ETW producer starts, so no early process event is missed.
+            // The binding is passive/evidence-only: it never acts and never confirms
+            // malware. In genuine Service mode it runs Passive; otherwise it stays
+            // development-safe. A binding failure must never block ETW telemetry.
+            binding = BehavioralRuntimeBindingFactory.Create(
+                _mode == DataVangerRuntimeMode.Service
+                    ? BehavioralRuntimeBindingOptions.Passive()
+                    : BehavioralRuntimeBindingOptions.DevelopmentSafe(),
+                pipeline);
+            try
+            {
+                await binding.StartAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                lock (_gate)
+                {
+                    _warnings.Add($"Behavioral runtime binding failed to start ({ex.GetType().Name}: {ex.Message}); ETW telemetry continues without correlation.");
+                }
+                try { binding.Dispose(); } catch (Exception) { /* best-effort teardown */ }
+                binding = null;
+            }
+
             var status = await EtwRuntimeProviderHost.SafeStartAsync(provider, cancellationToken).ConfigureAwait(false);
 
             // Preserve the provider's own last-error (the exact exception type+message
@@ -183,6 +220,8 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
                 {
                     _runtimeEventPipeline = pipeline;
                     _etwProvider = provider;
+                    _behavioralBinding = binding;
+                    _behavioralState = binding?.GetStatus().State ?? BehavioralRuntimeBindingState.Disabled;
                     _etwStatus = status;
                     _etwLastError = lastError;
                     if (status != EtwProviderStatus.Running)
@@ -193,6 +232,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
                     _lastUpdatedUtc = DateTimeOffset.UtcNow;
                     pipeline = null; // ownership transferred to the runtime
                     provider = null;
+                    binding = null;
                 }
             }
         }
@@ -209,7 +249,13 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         finally
         {
             // Created but not retained (disposed mid-start, or an exception
-            // occurred): tear down so nothing leaks.
+            // occurred): tear down so nothing leaks. Stop the behavioral consumer
+            // first (unsubscribe), then the producer, then the pipeline.
+            if (binding is not null)
+            {
+                try { await binding.StopAsync(CancellationToken.None).ConfigureAwait(false); } catch (Exception) { /* teardown is best-effort */ }
+                try { binding.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+            }
             if (provider is not null)
                 await EtwRuntimeProviderHost.SafeStopAsync(provider, CancellationToken.None).ConfigureAwait(false);
             if (pipeline is not null)
@@ -223,6 +269,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     {
         IEtwRuntimeProvider? provider;
         IRuntimeEventPipeline? pipeline;
+        BehavioralRuntimeBinding? binding;
         lock (_gate)
         {
             if (_disposed)
@@ -230,11 +277,14 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
                 return;
             }
 
-            // Detach any ETW provider/pipeline so teardown happens once, outside the lock.
+            // Detach any ETW provider/pipeline/binding so teardown happens once, outside the lock.
             provider = _etwProvider;
             pipeline = _runtimeEventPipeline;
+            binding = _behavioralBinding;
             _etwProvider = null;
             _runtimeEventPipeline = null;
+            _behavioralBinding = null;
+            _behavioralState = BehavioralRuntimeBindingState.Stopped;
 
             if (_state == DataVangerServiceState.NotStarted
                 || _state == DataVangerServiceState.Stopped
@@ -255,7 +305,13 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             if (provider is not null) _etwStatus = EtwProviderStatus.Stopped;
         }
 
-        // Graceful, fail-closed teardown of optional ETW telemetry (no-op when absent).
+        // Graceful, fail-closed teardown of optional runtime telemetry (no-op when absent).
+        // Stop the behavioral consumer first (unsubscribe) before the producer/pipeline.
+        if (binding is not null)
+        {
+            try { await binding.StopAsync(cancellationToken).ConfigureAwait(false); } catch (Exception) { /* teardown is best-effort */ }
+            try { binding.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+        }
         if (provider is not null)
             await EtwRuntimeProviderHost.SafeStopAsync(provider, cancellationToken).ConfigureAwait(false);
         if (pipeline is not null)
@@ -323,7 +379,40 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
                 RuntimeModuleAvailability.NotImplemented,
                 "Realtime file blocking / AMSI registration is deferred to a future phase."),
             BuildRuntimeTelemetryModule(),
+            BuildBehavioralRuntimeModule(),
         };
+    }
+
+    /// <summary>
+    /// Reports the behavioral runtime correlation module honestly. It is bound to
+    /// the SAME runtime-event pipeline the ETW provider publishes into, so it only
+    /// exists when ETW runtime telemetry is enabled. It is passive/evidence-only:
+    /// it consumes process telemetry and produces behavioral evidence that NEVER
+    /// confirms malware on its own and never drives any action — so it is reported
+    /// as <see cref="RuntimeModuleAvailability.Passive"/> when running (never
+    /// <see cref="RuntimeModuleAvailability.Available"/>) and Degraded otherwise.
+    /// </summary>
+    private DataVangerRuntimeModuleStatus BuildBehavioralRuntimeModule()
+    {
+        if (!_configuration.EnableEtwRuntimeTelemetry)
+        {
+            return new DataVangerRuntimeModuleStatus(
+                "BehavioralRuntimePlaceholder",
+                RuntimeModuleAvailability.NotImplemented,
+                "Behavioral runtime correlation binds to the ETW telemetry pipeline; set EnableEtwRuntimeTelemetry to activate it.");
+        }
+
+        return _behavioralState is BehavioralRuntimeBindingState.Running
+                or BehavioralRuntimeBindingState.Passive
+                or BehavioralRuntimeBindingState.DevelopmentSafe
+            ? new DataVangerRuntimeModuleStatus(
+                "BehavioralRuntime",
+                RuntimeModuleAvailability.Passive,
+                "Behavioral runtime correlation active: consumes ETW runtime telemetry, passive, bounded, heuristic-only; produces evidence only, never confirms malware and performs no blocking or quarantine.")
+            : new DataVangerRuntimeModuleStatus(
+                "BehavioralRuntime",
+                RuntimeModuleAvailability.Degraded,
+                $"Behavioral runtime correlation enabled but binding state is '{_behavioralState}'; degraded to safe fallback. No active protection.");
     }
 
     /// <summary>
@@ -362,14 +451,18 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     {
         IEtwRuntimeProvider? provider;
         IRuntimeEventPipeline? pipeline;
+        BehavioralRuntimeBinding? binding;
         lock (_gate)
         {
             if (_disposed) return;
             _disposed = true;
             provider = _etwProvider;
             pipeline = _runtimeEventPipeline;
+            binding = _behavioralBinding;
             _etwProvider = null;
             _runtimeEventPipeline = null;
+            _behavioralBinding = null;
+            _behavioralState = BehavioralRuntimeBindingState.Stopped;
             if (_state != DataVangerServiceState.Stopped
                 && _state != DataVangerServiceState.NotStarted)
             {
@@ -378,7 +471,12 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             }
         }
 
-        // Best-effort, fail-closed teardown of any opt-in ETW telemetry.
+        // Best-effort, fail-closed teardown of any opt-in runtime telemetry.
+        // Stop the behavioral consumer first (unsubscribe), then producer/pipeline.
+        if (binding is not null)
+        {
+            try { binding.Dispose(); } catch (Exception) { /* Dispose never throws */ }
+        }
         if (provider is not null)
         {
             try { EtwRuntimeProviderHost.SafeStopAsync(provider, CancellationToken.None).GetAwaiter().GetResult(); }

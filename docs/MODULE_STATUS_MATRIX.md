@@ -35,8 +35,8 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 | Real libyara backend | **Active (compiled-in; Windows-validated per 22_FINAL_STABILIZATION) / Fallback guaranteed** | `DataVanger/Infrastructure/LibyaraEngine.cs` (`#if YARA_REAL`, lifetime-scoped `YaraContext`, idempotent `Dispose`, no invalid `Scanner.Dispose`). **`YARA_REAL` is ACTIVE** in `DataVanger/DataVanger.csproj` with pinned `dnYara 2.1.0` + `dnYara.NativePack 2.1.0.3` (native `libyara.dll` copied as native content via `ExcludeAssets=all` + explicit `<None>`, `PlatformTarget x64`). `ScanEngine` disposes the real engine after each scan. `TryCreate` → null on native-unavailable / zero-rules, so the lightweight engine stays the guaranteed fallback. Real external matches are forced `Confirmed=false, Score=0` (never confirm). Final hard validation passed on Windows x64 with `DATAVANGER_REQUIRE_REAL_YARA=1`: `~Yara` 22 passed / 0 failed / 0 skipped, including the real-path `RealYaraBackend_*` tests. |
 | Trusted publishers | **Active** (substring) | `DataVanger/Core/AppSettings.cs` (`TrustedPublishers` + `ExtraTrustedPublishers`), `DataVanger/Reputation/ReputationEngine.cs` / `DataVanger/Core/ScanEngine.cs` (`IsPublisherTrusted`). **Substring match only — certificate-chain/thumbprint validation is Needs hardening (future phase).** Never overrides a malicious hash. |
 | Reputation engine | **Active** | `DataVanger/Reputation/ReputationEngine.cs` (trust-state scoring; known-bad/known-good precedence; trusted-signer relief gated on `!knownBad`) |
-| Memory scanner | **Needs audit** | Engine exists (`DataVanger/Memory/*`, e.g. `IMemoryScanner.cs`, `MemoryBehavioralBridge.cs`) and is exercised by the legacy parity tests, but is **not** in the per-file `EngineComposition` module set. Activation into the main scan is unverified. |
-| Behavioral engine | **Needs audit** | Engine exists (`DataVanger/Behavioral/BehavioralCorrelationEngine.cs` + rules) and is tested, but is **not** in the per-file `EngineComposition` module set (runtime/service path). Heuristic-only; clamps to HighRisk. |
+| Memory scanner | **Active (standalone) / not in scan composition by design** | Engine exists (`DataVanger/Memory/*`, e.g. `IMemoryScanner.cs`, `MemoryBehavioralBridge.cs`) and is exercised by the legacy parity tests. It is process-oriented, not a per-file `IDetectionModule`, so it is intentionally **not** in `EngineComposition`. Running it on the resident service path requires extracting `DataVanger.Memory.*` out of the UI assembly (`DataVanger.Service` does not reference the WPF `DataVanger` project) — tracked as a follow-up. |
+| Behavioral engine | **Active — now wired on the resident path** | In-process engine exists (`DataVanger/Behavioral/BehavioralCorrelationEngine.cs` + rules). The runtime binding (`DataVanger.Engine/Behavioral/Runtime/BehavioralRuntimeBinding.cs`) is now subscribed to the ETW runtime-event pipeline by `DataVanger.Service/Runtime/DataVangerServiceRuntime.cs` (opt-in via `EnableEtwRuntimeTelemetry`). Evidence-only; heuristic-only; clamps to HighRisk; never confirms malware and never acts. Not a per-file `EngineComposition` module by design. |
 
 ## Quarantine, scheduling, realtime
 
@@ -44,7 +44,7 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 |---|---|---|
 | Quarantine V2 | **Active** | `DataVanger.Engine/Quarantine/QuarantineService.cs`, `DataVanger.Infrastructure/Quarantine/FileSystemQuarantineStore.cs`, `DpapiQuarantineKeyProtector.cs` (auth-encryption + HMAC + DPAPI key; integrity-verified restore; auto-quarantine `ConfirmedMalware`-only; restore never automatic) |
 | Scheduler | **Active** | `DataVanger/Scheduling/*` (deterministic tick-driven; persists job state; never classifies) |
-| Realtime protection | **Prepared** | `DataVanger.Engine/Realtime/ConservativeRealtimeDecisionEngine.cs`, `DataVanger.Service/Realtime/RealtimeProtectionService.cs` (conservative; authorizes auto-action only for `ConfirmedMalware`, non-passive). Running it as a privileged background service depends on the stubbed Windows service. |
+| Realtime protection | **Prepared** | `DataVanger.Engine/Realtime/ConservativeRealtimeDecisionEngine.cs`, `DataVanger.Service/Realtime/RealtimeProtectionService.cs` (conservative; authorizes auto-action only for `ConfirmedMalware`, non-passive). Running it as a privileged background service uses the Windows service host (now implemented; opt-in install), but is not active by default. |
 
 ## Updates
 
@@ -57,7 +57,7 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 
 | Module | Status | Evidence (file) |
 |---|---|---|
-| Windows service mode | **Stub** | `DataVanger.Service/Program.cs:149` — `--service` is a diagnostic stub; "no Windows Service was installed". `--console`/`--status`/`--validate-config`/`--help` work. |
+| Windows service mode | **Prepared (implemented; opt-in)** | `DataVanger.Service/Hosting/WindowsServiceInstaller.cs` implements `--install`/`--uninstall` via admin-gated `sc.exe` (with restart-on-failure recovery); `Program.cs` `--service` hosts the runtime via `AddWindowsService` (`DataVangerServiceWorker : IHostedService`) and maps SCM start/stop to the runtime. Admin-gated, never auto-starts, no silent elevation. `--console`/`--status`/`--validate-config`/`--help` also work. (Earlier "Stub" entry was stale.) |
 | Named Pipe IPC | **Active (local, payload-validated)** | `DataVanger.Infrastructure/Ipc/NamedPipeDataVangerServiceHost.cs` / `NamedPipeDataVangerServiceClient.cs`, `IpcSecurityPolicy.cs`, `NamedPipeFraming.cs`, `IpcSerialization.cs`; handlers in `DataVanger.Service/Ipc/*` |
 | IPC ACLs | **Needs hardening** | No `PipeSecurity`/security-descriptor restriction implemented; `NamedPipeDataVangerServiceHost.cs:25` notes "Future ACL hardening (PipeSecurity) can be added". Payload allowlist/size validation exists, but connection-level ACLs do not. |
 
@@ -65,7 +65,7 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 
 | Module | Status | Evidence (file) |
 |---|---|---|
-| ETW provider | **Active (real, Windows-validated per Phase 17) / Fallback** | Real provider `DataVanger.Infrastructure/Etw/WindowsEtwRuntimeProvider.cs` (TraceEvent) was Windows-validated in Phase 17 (real session creation, `logman` visibility, disposal). **Focused ETW audit (22_FINAL_STABILIZATION): NO REGRESSION** — the file is byte-identical to the Phase-17 validated baseline (`git diff e0cc9ab HEAD` empty; blob `4b28bbda…`), `TryActivateRealSession` is the single activation path, `EnableKernelProvider` runs once before the `Source.Process()` pump, and the successful Windows validation proves the ordering. Behavior adapter `DataVanger/Behavioral/Adapters/EtwBehaviorProvider.cs:23` remains a **Stub** (`IsAvailable => false`); Null/InMemory providers are the **Fallback**. Never confirms malware alone. |
+| ETW provider | **Active (real, Windows-validated per Phase 17) / Fallback — now consumed** | Real provider `DataVanger.Infrastructure/Etw/WindowsEtwRuntimeProvider.cs` (TraceEvent) was Windows-validated in Phase 17 (real session creation, `logman` visibility, disposal). **Gap closed:** `DataVanger.Service/Runtime/DataVangerServiceRuntime.cs` now binds a `BehavioralRuntimeBinding` to the same runtime-event pipeline the provider publishes into (opt-in via `EnableEtwRuntimeTelemetry`), so real process telemetry is correlated into evidence-only behavioral signals instead of going to a pipeline with no consumer. Behavior adapter `DataVanger/Behavioral/Adapters/EtwBehaviorProvider.cs:23` (scan path) remains a **Stub** (`IsAvailable => false`); Null/InMemory providers are the **Fallback**. Never confirms malware alone. |
 | AMSI adapter | **Stub** | `DataVanger/Behavioral/Adapters/AmsiBehaviorAdapter.cs:17` `IsAvailable => false`. Seam present; no real amsi.dll integration. Never confirms malware alone. |
 
 ## UI, settings, reporting
@@ -108,9 +108,13 @@ Source: `DataVanger/Core/ThreatClassificationPolicy.cs` (`Classify`,
 
 ## Needs-audit gaps (do not guess — confirm in code/Windows)
 
-1. **Memory scanner & behavioral engine** exist and are tested but are **not** in the
-   per-file `EngineComposition` module set — confirm whether/where their results reach
-   the user (likely the runtime/service path by design).
+1. **Memory scanner & behavioral engine** — resolved (by design, not per-file
+   `EngineComposition` modules). The **behavioral** engine's runtime binding is now
+   subscribed to the ETW runtime-event pipeline in `DataVangerServiceRuntime`
+   (opt-in `EnableEtwRuntimeTelemetry`, evidence-only). The **memory** scanner stays
+   standalone; running it on the resident service path needs `DataVanger.Memory.*`
+   (and the AMSI providers) extracted from the UI `DataVanger` assembly into a shared
+   library, since `DataVanger.Service` does not reference the WPF project — follow-up.
 2. **Module status UI** — confirm whether any UI view surfaces
    `ModuleStatusAggregator`'s Active/Prepared/Stub taxonomy (future phase 18).
 3. **Reporting CSV** — re-verify CSV quoting / CSV-injection handling in

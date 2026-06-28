@@ -24,7 +24,7 @@ namespace DataVanger.Detection.Placeholders;
 // REMOVE the type-level [Obsolete] when wiring a real implementation.
 // =============================================================================
 
-[Obsolete("Placeholder — Behavioral engine not implemented. See 04_BEHAVIORAL_ENGINE.md.")]
+[Obsolete("Placeholder — there is no per-file behavioral DETECTION MODULE. The behavioral engine itself IS implemented and is wired on the resident service path (DataVanger.Engine/Behavioral/Runtime/BehavioralRuntimeBinding.cs subscribed to the ETW pipeline in DataVangerServiceRuntime). See 04_BEHAVIORAL_ENGINE.md.")]
 public sealed class BehavioralModulePlaceholder : DetectionModuleBase
 {
     public override string Name => "BehavioralEngine";
@@ -34,7 +34,7 @@ public sealed class BehavioralModulePlaceholder : DetectionModuleBase
         => Array.Empty<Evidence>();
 }
 
-[Obsolete("Placeholder — Memory scanner not implemented. See 05_MEMORY_SCANNER.md.")]
+[Obsolete("Placeholder — there is no per-file memory DETECTION MODULE. The memory scanner itself IS implemented (DataVanger/Memory/MemoryScannerEngine.cs) and runs standalone; resident-path activation in the service is a follow-up (requires extracting DataVanger.Memory.* into a shared library). See 05_MEMORY_SCANNER.md.")]
 public sealed class MemoryScannerPlaceholder : DetectionModuleBase
 {
     public override string Name => "MemoryScanner";
@@ -44,7 +44,7 @@ public sealed class MemoryScannerPlaceholder : DetectionModuleBase
         => Array.Empty<Evidence>();
 }
 
-[Obsolete("Placeholder — ETW/AMSI integration not implemented. See 06_ETW_AMSI_INTEGRATION.md.")]
+[Obsolete("Placeholder — there is no per-file ETW/AMSI DETECTION MODULE. Real ETW runtime telemetry is implemented (DataVanger.Infrastructure/Etw/WindowsEtwRuntimeProvider.cs) and now feeds the behavioral runtime binding on the resident service path; AMSI uses an in-memory content analyzer (no real amsi.dll yet). See 06_ETW_AMSI_INTEGRATION.md.")]
 public sealed class EtwAmsiModulePlaceholder : DetectionModuleBase
 {
     public override string Name => "EtwAmsi";

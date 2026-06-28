@@ -104,6 +104,44 @@ public class ServiceEtwTelemetryTests
         await rt.StopAsync(CancellationToken.None);
     }
 
+    // ── Behavioral runtime correlation binds to the ETW pipeline (passive) ───
+
+    [Fact]
+    public async Task EtwEnabled_Service_BindsBehavioralRuntime_Passive_NeverActiveProtection()
+    {
+        // Even with the real ETW session forced unavailable, the behavioral
+        // consumer is bound to the SAME runtime-event pipeline. In Service mode it
+        // runs Passive and must NEVER be reported as active protection.
+        using var rt = new DataVangerServiceRuntime(
+            EtwOn(), DataVangerRuntimeMode.Service, configWarnings: null, etwPlatformProbe: () => false);
+
+        await rt.StartAsync(CancellationToken.None);
+
+        var snap = rt.GetStatusSnapshot();
+        Assert.False(snap.HasActiveProtection);
+        var beh = snap.Modules.Single(m => m.Name == "BehavioralRuntime");
+        Assert.Equal(RuntimeModuleAvailability.Passive, beh.Availability);
+        Assert.False(beh.IsActiveProtection);
+
+        await rt.StopAsync(CancellationToken.None);
+        Assert.Equal(DataVangerServiceState.Stopped, rt.State);
+    }
+
+    [Fact]
+    public async Task EtwDisabled_BehavioralRuntime_StaysPlaceholder()
+    {
+        using var rt = new DataVangerServiceRuntime(
+            DataVangerServiceConfiguration.SafeDefaults(), DataVangerRuntimeMode.Service);
+        await rt.StartAsync(CancellationToken.None);
+
+        var snap = rt.GetStatusSnapshot();
+        Assert.Contains(snap.Modules, m => m.Name == "BehavioralRuntimePlaceholder");
+        Assert.DoesNotContain(snap.Modules, m => m.Name == "BehavioralRuntime");
+        Assert.False(snap.HasActiveProtection);
+
+        await rt.StopAsync(CancellationToken.None);
+    }
+
     // ── Provider selection: never returns the real Windows provider off-Windows ─
 
     [Fact]
