@@ -99,8 +99,8 @@ public class PeRecalibrationTests
         Xunit.Assert.Contains(ev, e => e.Description.Contains("Timestamp") && e.ScoreDelta == 0);
     }
 
-    [Xunit.Fact]
-    public void Strong_NeverDemotes_ForteCorrelation()
+    [Xunit.Fact] // updated contract: strong/system + NO hard anomaly -> forte (installer-style) IS demoted
+    public void Strong_DemotesForteCorrelation_WhenNoHardAnomaly()
     {
         var ev = new List<Evidence>
         {
@@ -110,8 +110,25 @@ public class PeRecalibrationTests
 
         int reduction = PeImportRecalibration.Apply(ev, PublisherTrustLevel.Unsigned, SystemPathKind.WinSxS);
 
-        Xunit.Assert.Equal(4, reduction); // only the injection import demoted
+        Xunit.Assert.Equal(8, reduction); // injection import (4) + installer-style forte (4)
+        Xunit.Assert.Contains(ev, e => e.Description.Contains("Correlação PE forte") && e.ScoreDelta == 0);
+    }
+
+    [Xunit.Fact] // anti-FN: a hard anomaly (RWX) keeps forte preserved even in a strong/system context
+    public void Strong_KeepsForteCorrelation_WhenHardAnomalyPresent()
+    {
+        var ev = new List<Evidence>
+        {
+            Pe(Forte, 4, EvidenceStrength.High),
+            Pe(Rwx, 4, EvidenceStrength.High),  // hard anomaly -> gates off the forte relief
+            Pe(Injection, 4, EvidenceStrength.High),
+        };
+
+        PeImportRecalibration.Apply(ev, PublisherTrustLevel.TrustedWindowsComponent, SystemPathKind.WinSxS);
+
         Xunit.Assert.Contains(ev, e => e.Description.Contains("Correlação PE forte") && e.ScoreDelta == 4 && e.Strength == EvidenceStrength.High);
+        Xunit.Assert.Contains(ev, e => e.Description.Contains("(RWX)") && e.ScoreDelta == 4);
+        Xunit.Assert.True(ScanEngine.HasActionableEvidenceAfterTrustRecalibration(ev));
     }
 
     [Xunit.Fact]
