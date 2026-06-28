@@ -32,8 +32,15 @@ public class ModuleStatusTests
         Assert.Equal(ModuleOperatingState.Stub, Find("http-update-transport").State);
 
     [Fact]
-    public void CodeReality_WindowsService_IsStub() =>
-        Assert.Equal(ModuleOperatingState.Stub, Find("windows-service").State);
+    public void CodeReality_WindowsService_IsPrepared_NotStub()
+    {
+        // The Windows service is now implemented (admin-gated sc.exe install/uninstall
+        // + a --service host via AddWindowsService). It is opt-in and never auto-starts,
+        // so it is Prepared (implemented, not active-by-default) — no longer a Stub.
+        var svc = Find("windows-service");
+        Assert.Equal(ModuleOperatingState.Prepared, svc.State);
+        Assert.NotEqual(ModuleOperatingState.Stub, svc.State);
+    }
 
     [Fact]
     public void CodeReality_EtwAndAmsi_AreNotActive()
