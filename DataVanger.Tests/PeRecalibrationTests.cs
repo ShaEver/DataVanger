@@ -179,6 +179,7 @@ public class PeRecalibrationTests
             BaseScore = score - reduction,
             IsSigned = true,
             Publisher = "CN=Microsoft Corporation",
+            PublisherTrusted = true,
             LastWriteUtc = System.DateTime.UtcNow.AddDays(-30),
             Evidence = ev,
         }, null);

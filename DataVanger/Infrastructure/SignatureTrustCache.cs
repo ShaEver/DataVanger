@@ -16,8 +16,9 @@ namespace DataVanger.Infrastructure;
 /// trust-environment <c>fingerprint</c> (which changes when the OS catalog store changes),
 /// so unchanged files are not re-verified — making repeat scans fast.
 ///
-/// Caching ONLY stores raw verification facts (signed?, signer subject, source,
-/// present-but-invalid); it never decides trust. Any file change (mtime/size) or
+/// Caching ONLY stores raw verification facts (signed?, signer subject, public
+/// signer certificate, source, present-but-invalid); it never decides trust.
+/// Any file change (mtime/size) or
 /// fingerprint change is a miss, so it can never grant stale trust.
 /// </summary>
 internal sealed class SignatureTrustCache
@@ -48,6 +49,7 @@ internal sealed class SignatureTrustCache
                     SignerSubject = e.SignerSubject ?? "",
                     Source = (SignatureSource)e.Source,
                     SignaturePresentButUnverified = e.PresentButUnverified,
+                    SignerCertificateRawData = DecodeCertificate(e.SignerCertificateBase64),
                 };
                 return true;
             }
@@ -74,6 +76,9 @@ internal sealed class SignatureTrustCache
                 SignerSubject = r.SignerSubject,
                 Source = (int)r.Source,
                 PresentButUnverified = r.SignaturePresentButUnverified,
+                SignerCertificateBase64 = r.SignerCertificateRawData.Length == 0
+                    ? ""
+                    : Convert.ToBase64String(r.SignerCertificateRawData),
                 LastSeen = DateTime.Now,
             };
         }
@@ -81,6 +86,13 @@ internal sealed class SignatureTrustCache
         {
             // Never let cache bookkeeping break a scan.
         }
+    }
+
+    private static byte[] DecodeCertificate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return Array.Empty<byte>();
+        try { return Convert.FromBase64String(value); }
+        catch (FormatException) { return Array.Empty<byte>(); }
     }
 
     public void Persist()
@@ -133,6 +145,7 @@ internal sealed class SignatureTrustCache
         public string SignerSubject { get; set; } = "";
         public int Source { get; set; }
         public bool PresentButUnverified { get; set; }
+        public string SignerCertificateBase64 { get; set; } = "";
         public DateTime LastSeen { get; set; }
     }
 }

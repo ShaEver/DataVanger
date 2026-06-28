@@ -19,6 +19,11 @@ public enum RuntimeEventCategory
     ProcessTerminated,
     CommandLineObserved,
     ScriptObserved,
+    /// <summary>
+    /// Process-memory injection/tamper indicator. This is heuristic telemetry,
+    /// never a malware verdict and never authorization for remediation.
+    /// </summary>
+    InjectionObserved,
     PersistenceObserved,
     TamperObserved,
     RansomwareSuspicion,

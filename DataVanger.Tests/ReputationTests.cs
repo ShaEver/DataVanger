@@ -101,6 +101,7 @@ var signerEval = repEngine.Evaluate(new ReputationSubject
     BaseScore = 9,
     IsSigned = true,
     Publisher = "Microsoft Corporation",
+    PublisherTrusted = true,
     LastWriteUtc = DateTime.UtcNow.AddDays(-100),
     Evidence = heuristicEvidence,
 }, null);

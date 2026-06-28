@@ -4,6 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using DataVanger.Engine.Behavioral.Runtime;
 using DataVanger.Infrastructure.Etw;
+using DataVanger.Memory;
+using DataVanger.Runtime;
+using DataVanger.Runtime.Amsi;
 using DataVanger.Service.Behavioral;
 using DataVanger.Service.RuntimeEvents;
 using DataVanger.Shared.Behavioral.Runtime;
@@ -43,6 +46,9 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     private readonly List<string> _warnings = new();
     private readonly DataVangerRuntimeMode _mode;
     private readonly Func<bool>? _etwPlatformProbe;
+    private readonly IMemoryScanner _memoryScanner;
+    private readonly MemoryScannerOptions _memoryScannerOptions;
+    private readonly Func<IAmsiTelemetryProvider> _amsiProviderFactory;
     private DataVangerServiceState _state = DataVangerServiceState.NotStarted;
     private DateTimeOffset? _startedAtUtc;
     private DateTimeOffset _lastUpdatedUtc = DateTimeOffset.UtcNow;
@@ -54,6 +60,20 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     private IRuntimeEventPipeline? _runtimeEventPipeline;
     private EtwProviderStatus _etwStatus = EtwProviderStatus.Disabled;
     private string? _etwLastError;
+
+    // One-shot/sob-demanda process-memory telemetry. The startup pass is
+    // opt-in and bounded by MemoryScannerOptions; no timer or loop exists.
+    private MemoryRuntimeBridge? _memoryBridge;
+    private MemoryScanResult? _memoryScanResult;
+    private bool _memoryPassAttempted;
+    private string? _memoryLastError;
+
+    // In-memory AMSI content observation. This provider has no background
+    // capture: it emits only when SubmitAmsiContent is explicitly called.
+    private IAmsiTelemetryProvider? _amsiProvider;
+    private AmsiRuntimeBridge? _amsiBridge;
+    private RuntimeProviderState _amsiState = RuntimeProviderState.NotStarted;
+    private string? _amsiLastError;
 
     // Behavioral runtime correlation (opt-in). Bound to the SAME runtime-event
     // pipeline the ETW provider publishes into, so real process telemetry is
@@ -72,7 +92,10 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         DataVangerServiceConfiguration configuration,
         DataVangerRuntimeMode mode,
         IReadOnlyList<string>? configWarnings = null,
-        Func<bool>? etwPlatformProbe = null)
+        Func<bool>? etwPlatformProbe = null,
+        IMemoryScanner? memoryScanner = null,
+        MemoryScannerOptions? memoryScannerOptions = null,
+        Func<IAmsiTelemetryProvider>? amsiProviderFactory = null)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _mode = configuration.ForceDevelopmentMode ? DataVangerRuntimeMode.Development : mode;
@@ -80,6 +103,10 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         // real Windows ETW session is NEVER opened during unit tests. In
         // production this is null and collapses to OperatingSystem.IsWindows().
         _etwPlatformProbe = etwPlatformProbe;
+        _memoryScanner = memoryScanner ?? MemoryScannerFactory.CreateSafeDefault(AddWarning);
+        _memoryScannerOptions = CreateBoundedMemoryOptions(memoryScannerOptions);
+        _amsiProviderFactory = amsiProviderFactory
+            ?? (() => AmsiProviderFactory.Create(AmsiProviderMode.Auto));
         if (configWarnings is { Count: > 0 })
         {
             _warnings.AddRange(configWarnings);
@@ -95,7 +122,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        bool shouldStartEtw;
+        bool shouldStartResidentRuntime;
         lock (_gate)
         {
             if (_disposed)
@@ -138,54 +165,46 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             }
 
             _lastUpdatedUtc = DateTimeOffset.UtcNow;
-            shouldStartEtw = _state == DataVangerServiceState.Running
-                && _configuration.EnableEtwRuntimeTelemetry;
+            shouldStartResidentRuntime = _state == DataVangerServiceState.Running;
         }
 
-        if (shouldStartEtw)
+        if (shouldStartResidentRuntime)
         {
-            // Outside the lock (async). Never throws: degrades to a warning.
-            await StartEtwRuntimeTelemetryAsync(cancellationToken).ConfigureAwait(false);
+            // Outside the lock. Every producer is passive and fail-closed.
+            await StartResidentRuntimeAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 
     /// <summary>
-    /// Opt-in activation of the existing, already-gated and bounded ETW runtime
-    /// provider. Selection goes through <see cref="EtwProviderFactory.Create"/>
-    /// (via <see cref="EtwRuntimeProviderHost"/>): non-Windows, unprivileged, or
-    /// development-mode hosts receive the Null provider, so this method opens a
-    /// real ETW session ONLY on a privileged Windows Service host. Every failure
-    /// path degrades to a warning; the runtime keeps running. Telemetry is
-    /// published into a bounded in-process pipeline and is heuristic-only.
+    /// Creates one bounded in-process pipeline shared by the behavioral
+    /// consumer and every resident producer. ETW remains opt-in; the memory
+    /// pass remains opt-in and runs exactly once here; AMSI is an inert
+    /// in-memory observer until content is explicitly submitted.
     /// </summary>
-    private async Task StartEtwRuntimeTelemetryAsync(CancellationToken cancellationToken)
+    private async Task StartResidentRuntimeAsync(CancellationToken cancellationToken)
     {
         IRuntimeEventPipeline? pipeline = null;
-        IEtwRuntimeProvider? provider = null;
+        IEtwRuntimeProvider? etwProvider = null;
         BehavioralRuntimeBinding? binding = null;
+        IAmsiTelemetryProvider? amsiProvider = null;
+        AmsiRuntimeBridge? amsiBridge = null;
+        MemoryRuntimeBridge? memoryBridge = null;
+
+        var etwStatus = EtwProviderStatus.Disabled;
+        string? etwLastError = null;
+        var amsiState = RuntimeProviderState.NotStarted;
+        string? amsiLastError = null;
+        MemoryScanResult? memoryResult = null;
+        string? memoryLastError = null;
+        bool memoryPassAttempted = false;
+
         try
         {
-            var etwConfig = new EtwProviderConfiguration
-            {
-                Enabled = true,
-                AllowRealProvider = true,
-                // Real Windows capture only in genuine Service mode; Development/
-                // Console keep DevelopmentMode=true so the factory returns Null.
-                DevelopmentMode = _mode != DataVangerRuntimeMode.Service,
-                CaptureProcessStart = true,
-                CaptureCommandLine = false,
-                CapturePowerShellSignals = false,
-                SanitizeCommandLines = true,
-            }.WithSafeDefaults();
-
             pipeline = RuntimeEventPipelineFactory.CreateDevelopmentPipeline();
-            provider = EtwRuntimeProviderHost.CreateProvider(pipeline, etwConfig, _etwPlatformProbe);
 
-            // Bind the behavioral runtime correlation engine to the SAME pipeline
-            // BEFORE the ETW producer starts, so no early process event is missed.
-            // The binding is passive/evidence-only: it never acts and never confirms
-            // malware. In genuine Service mode it runs Passive; otherwise it stays
-            // development-safe. A binding failure must never block ETW telemetry.
+            // Subscribe the passive behavioral consumer before any producer
+            // emits, so startup memory findings and submitted AMSI content use
+            // the same correlation path as ETW.
             binding = BehavioralRuntimeBindingFactory.Create(
                 _mode == DataVangerRuntimeMode.Service
                     ? BehavioralRuntimeBindingOptions.Passive()
@@ -197,70 +216,175 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             }
             catch (Exception ex)
             {
-                lock (_gate)
-                {
-                    _warnings.Add($"Behavioral runtime binding failed to start ({ex.GetType().Name}: {ex.Message}); ETW telemetry continues without correlation.");
-                }
+                AddWarning($"Behavioral runtime binding failed to start ({ex.GetType().Name}: {ex.Message}); resident telemetry continues without correlation.");
                 try { binding.Dispose(); } catch (Exception) { /* best-effort teardown */ }
                 binding = null;
             }
 
-            var status = await EtwRuntimeProviderHost.SafeStartAsync(provider, cancellationToken).ConfigureAwait(false);
+            if (_configuration.EnableEtwRuntimeTelemetry)
+            {
+                try
+                {
+                    var etwConfig = new EtwProviderConfiguration
+                    {
+                        Enabled = true,
+                        AllowRealProvider = true,
+                        // Real capture only in genuine Service mode.
+                        DevelopmentMode = _mode != DataVangerRuntimeMode.Service,
+                        CaptureProcessStart = true,
+                        CaptureCommandLine = _configuration.CaptureEtwCommandLine,
+                        CapturePowerShellSignals = _configuration.CaptureEtwPowerShellSignals,
+                        SanitizeCommandLines = true,
+                    }.WithSafeDefaults();
 
-            // Preserve the provider's own last-error (the exact exception type+message
-            // captured during real-session activation) so a degraded status such as
-            // ProviderUnavailable is never opaque. GetHealth() never throws by contract.
-            string? lastError = null;
-            try { lastError = provider.GetHealth().LastError; }
-            catch (Exception) { /* health probe must never throw back */ }
+                    etwProvider = EtwRuntimeProviderHost.CreateProvider(
+                        pipeline, etwConfig, _etwPlatformProbe);
+                    etwStatus = await EtwRuntimeProviderHost
+                        .SafeStartAsync(etwProvider, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    try { etwLastError = etwProvider.GetHealth().LastError; }
+                    catch (Exception) { /* health probes are best-effort */ }
+
+                    if (etwStatus != EtwProviderStatus.Running)
+                    {
+                        var detail = string.IsNullOrWhiteSpace(etwLastError)
+                            ? string.Empty
+                            : $" (last error: {etwLastError})";
+                        AddWarning($"ETW runtime telemetry enabled but provider status is '{etwStatus}'{detail}; runtime continues without real ETW (safe fallback).");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    etwStatus = EtwProviderStatus.Faulted;
+                    etwLastError = $"{ex.GetType().Name}: {ex.Message}";
+                    AddWarning($"ETW runtime telemetry failed to start ({etwLastError}); runtime continues without it.");
+                    if (etwProvider is not null)
+                    {
+                        await EtwRuntimeProviderHost
+                            .SafeStopAsync(etwProvider, CancellationToken.None)
+                            .ConfigureAwait(false);
+                        etwProvider = null;
+                    }
+                }
+            }
+
+            // The in-memory AMSI provider opens no OS registration/session and
+            // creates no background loop. It emits only on SubmitContent.
+            try
+            {
+                amsiProvider = _amsiProviderFactory();
+                amsiBridge = new AmsiRuntimeBridge(amsiProvider, pipeline, AddWarning);
+                amsiState = amsiProvider.Start();
+                if (amsiState is not (RuntimeProviderState.Running or RuntimeProviderState.RunningMock))
+                {
+                    amsiLastError = $"provider state is '{amsiState}'";
+                    AddWarning($"AMSI runtime observation degraded: {amsiLastError}.");
+                }
+            }
+            catch (Exception ex)
+            {
+                amsiState = RuntimeProviderState.Failed;
+                amsiLastError = $"{ex.GetType().Name}: {ex.Message}";
+                AddWarning($"AMSI runtime observation failed to start ({amsiLastError}); explicit content submission remains unavailable.");
+                try { amsiBridge?.Dispose(); } catch (Exception) { /* best-effort */ }
+                try { amsiProvider?.Dispose(); } catch (Exception) { /* best-effort */ }
+                amsiBridge = null;
+                amsiProvider = null;
+            }
+
+            memoryBridge = new MemoryRuntimeBridge(pipeline, AddWarning);
+            if (_configuration.EnableMemoryScanPass)
+            {
+                memoryPassAttempted = true;
+                try
+                {
+                    // Deliberately synchronous and one-shot: no Task.Run, no
+                    // resident worker, no timer/loop owned by the service.
+                    memoryResult = _memoryScanner.Scan(_memoryScannerOptions, cancellationToken);
+                    memoryBridge.Publish(memoryResult.Findings, cancellationToken);
+                    if (memoryResult.IsDegraded)
+                    {
+                        memoryLastError = string.IsNullOrWhiteSpace(memoryResult.DegradationDetail)
+                            ? memoryResult.Degradation.ToString()
+                            : $"{memoryResult.Degradation}: {memoryResult.DegradationDetail}";
+                        AddWarning($"Memory runtime pass degraded ({memoryLastError}); service continues without active memory protection.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    memoryLastError = $"{ex.GetType().Name}: {ex.Message}";
+                    AddWarning($"Memory runtime pass failed ({memoryLastError}); service continues without active memory protection.");
+                }
+            }
 
             lock (_gate)
             {
                 if (!_disposed)
                 {
                     _runtimeEventPipeline = pipeline;
-                    _etwProvider = provider;
+                    _etwProvider = etwProvider;
                     _behavioralBinding = binding;
-                    _behavioralState = binding?.GetStatus().State ?? BehavioralRuntimeBindingState.Disabled;
-                    _etwStatus = status;
-                    _etwLastError = lastError;
-                    if (status != EtwProviderStatus.Running)
-                    {
-                        var detail = string.IsNullOrWhiteSpace(lastError) ? string.Empty : $" (last error: {lastError})";
-                        _warnings.Add($"ETW runtime telemetry enabled but provider status is '{status}'{detail}; runtime continues without real ETW (safe fallback).");
-                    }
+                    _behavioralState = binding?.GetStatus().State
+                        ?? BehavioralRuntimeBindingState.Disabled;
+                    _etwStatus = etwStatus;
+                    _etwLastError = etwLastError;
+                    _amsiProvider = amsiProvider;
+                    _amsiBridge = amsiBridge;
+                    _amsiState = amsiState;
+                    _amsiLastError = amsiLastError;
+                    _memoryBridge = memoryBridge;
+                    _memoryScanResult = memoryResult;
+                    _memoryPassAttempted = memoryPassAttempted;
+                    _memoryLastError = memoryLastError;
                     _lastUpdatedUtc = DateTimeOffset.UtcNow;
-                    pipeline = null; // ownership transferred to the runtime
-                    provider = null;
+
+                    pipeline = null;
+                    etwProvider = null;
                     binding = null;
+                    amsiProvider = null;
+                    amsiBridge = null;
+                    memoryBridge = null;
                 }
             }
         }
         catch (Exception ex)
         {
+            AddWarning($"Resident runtime pipeline failed to start ({ex.GetType().Name}: {ex.Message}); service continues in degraded passive mode.");
             lock (_gate)
             {
-                _etwStatus = EtwProviderStatus.Faulted;
-                _etwLastError = $"{ex.GetType().Name}: {ex.Message}";
-                _warnings.Add($"ETW runtime telemetry failed to start ({ex.GetType().Name}: {ex.Message}); runtime continues without it.");
+                _behavioralState = BehavioralRuntimeBindingState.Disabled;
                 _lastUpdatedUtc = DateTimeOffset.UtcNow;
             }
         }
         finally
         {
-            // Created but not retained (disposed mid-start, or an exception
-            // occurred): tear down so nothing leaks. Stop the behavioral consumer
-            // first (unsubscribe), then the producer, then the pipeline.
+            // Created but not retained (disposed mid-start or fatal pipeline
+            // failure): preserve the existing consumer-first teardown pattern,
+            // then detach AMSI, stop ETW, and finally dispose the pipeline.
             if (binding is not null)
             {
-                try { await binding.StopAsync(CancellationToken.None).ConfigureAwait(false); } catch (Exception) { /* teardown is best-effort */ }
-                try { binding.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+                try { await binding.StopAsync(CancellationToken.None).ConfigureAwait(false); } catch (Exception) { /* best-effort */ }
+                try { binding.Dispose(); } catch (Exception) { /* best-effort */ }
             }
-            if (provider is not null)
-                await EtwRuntimeProviderHost.SafeStopAsync(provider, CancellationToken.None).ConfigureAwait(false);
+            if (amsiBridge is not null)
+            {
+                try { amsiBridge.Dispose(); } catch (Exception) { /* best-effort */ }
+            }
+            if (amsiProvider is not null)
+            {
+                try { amsiProvider.Stop(); } catch (Exception) { /* best-effort */ }
+                try { amsiProvider.Dispose(); } catch (Exception) { /* best-effort */ }
+            }
+            if (etwProvider is not null)
+            {
+                await EtwRuntimeProviderHost
+                    .SafeStopAsync(etwProvider, CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
             if (pipeline is not null)
             {
-                try { pipeline.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+                try { pipeline.Dispose(); } catch (Exception) { /* best-effort */ }
             }
         }
     }
@@ -270,6 +394,8 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         IEtwRuntimeProvider? provider;
         IRuntimeEventPipeline? pipeline;
         BehavioralRuntimeBinding? binding;
+        IAmsiTelemetryProvider? amsiProvider;
+        AmsiRuntimeBridge? amsiBridge;
         lock (_gate)
         {
             if (_disposed)
@@ -281,10 +407,16 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             provider = _etwProvider;
             pipeline = _runtimeEventPipeline;
             binding = _behavioralBinding;
+            amsiProvider = _amsiProvider;
+            amsiBridge = _amsiBridge;
             _etwProvider = null;
             _runtimeEventPipeline = null;
             _behavioralBinding = null;
+            _amsiProvider = null;
+            _amsiBridge = null;
+            _memoryBridge = null;
             _behavioralState = BehavioralRuntimeBindingState.Stopped;
+            if (amsiProvider is not null) _amsiState = RuntimeProviderState.Stopped;
 
             if (_state == DataVangerServiceState.NotStarted
                 || _state == DataVangerServiceState.Stopped
@@ -312,11 +444,67 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             try { await binding.StopAsync(cancellationToken).ConfigureAwait(false); } catch (Exception) { /* teardown is best-effort */ }
             try { binding.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
         }
+        if (amsiBridge is not null)
+        {
+            try { amsiBridge.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+        }
+        if (amsiProvider is not null)
+        {
+            try { amsiProvider.Stop(); } catch (Exception) { /* teardown is best-effort */ }
+            try { amsiProvider.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+        }
         if (provider is not null)
             await EtwRuntimeProviderHost.SafeStopAsync(provider, cancellationToken).ConfigureAwait(false);
         if (pipeline is not null)
         {
             try { pipeline.Dispose(); } catch (Exception) { /* teardown is best-effort */ }
+        }
+    }
+
+    /// <summary>
+    /// Submit explicitly obtained script content to the in-memory AMSI
+    /// analyzer. This observes only; it never blocks script execution and
+    /// never returns a malware verdict.
+    /// </summary>
+    public int SubmitAmsiContent(string source, string content, int processId)
+    {
+        IAmsiTelemetryProvider? provider;
+        lock (_gate)
+        {
+            if (_disposed) return 0;
+            provider = _amsiProvider;
+        }
+
+        if (provider is null) return 0;
+
+        try
+        {
+            var published = provider.SubmitContent(source, content, processId);
+            lock (_gate)
+            {
+                _behavioralState = _behavioralBinding?.GetStatus().State
+                    ?? _behavioralState;
+                _lastUpdatedUtc = DateTimeOffset.UtcNow;
+            }
+            return published;
+        }
+        catch (Exception ex)
+        {
+            AddWarning($"AMSI content submission failed ({ex.GetType().Name}: {ex.Message}); no verdict or action was produced.");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// Bounded snapshot for diagnostics/tests. Every returned item is
+    /// evidence-only and has IsConfirmedMalware=false by construction.
+    /// </summary>
+    public IReadOnlyList<BehavioralRuntimeEvidence> GetRecentRuntimeEvidence()
+    {
+        lock (_gate)
+        {
+            return _behavioralBinding?.GetRecentEvidence()
+                ?? Array.Empty<BehavioralRuntimeEvidence>();
         }
     }
 
@@ -377,29 +565,30 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             new DataVangerRuntimeModuleStatus(
                 "RealtimeProtectionPlaceholder",
                 RuntimeModuleAvailability.NotImplemented,
-                "Realtime file blocking / AMSI registration is deferred to a future phase."),
+                "Realtime file blocking / system AMSI registration is deferred; in-memory AMSI observation is reported separately."),
             BuildRuntimeTelemetryModule(),
+            BuildMemoryRuntimeModule(),
+            BuildAmsiRuntimeModule(),
             BuildBehavioralRuntimeModule(),
         };
     }
 
     /// <summary>
     /// Reports the behavioral runtime correlation module honestly. It is bound to
-    /// the SAME runtime-event pipeline the ETW provider publishes into, so it only
-    /// exists when ETW runtime telemetry is enabled. It is passive/evidence-only:
-    /// it consumes process telemetry and produces behavioral evidence that NEVER
+    /// the SAME runtime-event pipeline used by ETW, memory, and AMSI. It is
+    /// passive/evidence-only: it consumes telemetry and produces evidence that NEVER
     /// confirms malware on its own and never drives any action — so it is reported
     /// as <see cref="RuntimeModuleAvailability.Passive"/> when running (never
     /// <see cref="RuntimeModuleAvailability.Available"/>) and Degraded otherwise.
     /// </summary>
     private DataVangerRuntimeModuleStatus BuildBehavioralRuntimeModule()
     {
-        if (!_configuration.EnableEtwRuntimeTelemetry)
+        if (_state == DataVangerServiceState.NotStarted)
         {
             return new DataVangerRuntimeModuleStatus(
                 "BehavioralRuntimePlaceholder",
                 RuntimeModuleAvailability.NotImplemented,
-                "Behavioral runtime correlation binds to the ETW telemetry pipeline; set EnableEtwRuntimeTelemetry to activate it.");
+                "Behavioral runtime correlation starts with the resident runtime pipeline.");
         }
 
         return _behavioralState is BehavioralRuntimeBindingState.Running
@@ -408,7 +597,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             ? new DataVangerRuntimeModuleStatus(
                 "BehavioralRuntime",
                 RuntimeModuleAvailability.Passive,
-                "Behavioral runtime correlation active: consumes ETW runtime telemetry, passive, bounded, heuristic-only; produces evidence only, never confirms malware and performs no blocking or quarantine.")
+                "Behavioral runtime correlation active: consumes ETW, memory, and in-memory AMSI telemetry; passive, bounded, heuristic-only; never confirms malware and performs no blocking or quarantine.")
             : new DataVangerRuntimeModuleStatus(
                 "BehavioralRuntime",
                 RuntimeModuleAvailability.Degraded,
@@ -447,11 +636,60 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
                     : $"ETW runtime telemetry enabled but provider status is '{_etwStatus}' (last error: {_etwLastError}); degraded to safe fallback. No active protection.");
     }
 
+    private DataVangerRuntimeModuleStatus BuildMemoryRuntimeModule()
+    {
+        if (!_configuration.EnableMemoryScanPass)
+        {
+            return new DataVangerRuntimeModuleStatus(
+                "MemoryRuntime",
+                RuntimeModuleAvailability.Passive,
+                "Resident memory bridge is wired; the bounded startup scan pass is disabled by default. No active protection.");
+        }
+
+        if (_memoryPassAttempted
+            && _memoryScanResult is not null
+            && !_memoryScanResult.IsDegraded
+            && string.IsNullOrWhiteSpace(_memoryLastError))
+        {
+            return new DataVangerRuntimeModuleStatus(
+                "MemoryRuntime",
+                RuntimeModuleAvailability.Passive,
+                $"One bounded startup pass completed: {_memoryScanResult.ProcessesScanned} processes, {_memoryScanResult.Findings.Count} heuristic findings. Evidence only; never confirms malware.");
+        }
+
+        var detail = string.IsNullOrWhiteSpace(_memoryLastError)
+            ? (_memoryPassAttempted
+                ? "The bounded startup pass did not complete with a usable reader."
+                : "The bounded startup pass has not run.")
+            : _memoryLastError;
+        return new DataVangerRuntimeModuleStatus(
+            "MemoryRuntime",
+            RuntimeModuleAvailability.Degraded,
+            $"Memory runtime enabled but degraded ({detail}). No active protection and no automatic action.");
+    }
+
+    private DataVangerRuntimeModuleStatus BuildAmsiRuntimeModule()
+    {
+        return _amsiState is RuntimeProviderState.Running or RuntimeProviderState.RunningMock
+            ? new DataVangerRuntimeModuleStatus(
+                "AmsiRuntime",
+                RuntimeModuleAvailability.Passive,
+                "In-memory AMSI content observation is ready for explicit submissions; passive, bounded, never blocks scripts and never confirms malware.")
+            : new DataVangerRuntimeModuleStatus(
+                "AmsiRuntime",
+                RuntimeModuleAvailability.Degraded,
+                string.IsNullOrWhiteSpace(_amsiLastError)
+                    ? $"In-memory AMSI observation state is '{_amsiState}'. No active protection."
+                    : $"In-memory AMSI observation degraded ({_amsiLastError}). No active protection.");
+    }
+
     public void Dispose()
     {
         IEtwRuntimeProvider? provider;
         IRuntimeEventPipeline? pipeline;
         BehavioralRuntimeBinding? binding;
+        IAmsiTelemetryProvider? amsiProvider;
+        AmsiRuntimeBridge? amsiBridge;
         lock (_gate)
         {
             if (_disposed) return;
@@ -459,10 +697,16 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             provider = _etwProvider;
             pipeline = _runtimeEventPipeline;
             binding = _behavioralBinding;
+            amsiProvider = _amsiProvider;
+            amsiBridge = _amsiBridge;
             _etwProvider = null;
             _runtimeEventPipeline = null;
             _behavioralBinding = null;
+            _amsiProvider = null;
+            _amsiBridge = null;
+            _memoryBridge = null;
             _behavioralState = BehavioralRuntimeBindingState.Stopped;
+            if (amsiProvider is not null) _amsiState = RuntimeProviderState.Stopped;
             if (_state != DataVangerServiceState.Stopped
                 && _state != DataVangerServiceState.NotStarted)
             {
@@ -477,6 +721,15 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         {
             try { binding.Dispose(); } catch (Exception) { /* Dispose never throws */ }
         }
+        if (amsiBridge is not null)
+        {
+            try { amsiBridge.Dispose(); } catch (Exception) { /* Dispose never throws */ }
+        }
+        if (amsiProvider is not null)
+        {
+            try { amsiProvider.Stop(); } catch (Exception) { /* Dispose never throws */ }
+            try { amsiProvider.Dispose(); } catch (Exception) { /* Dispose never throws */ }
+        }
         if (provider is not null)
         {
             try { EtwRuntimeProviderHost.SafeStopAsync(provider, CancellationToken.None).GetAwaiter().GetResult(); }
@@ -486,5 +739,40 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         {
             try { pipeline.Dispose(); } catch (Exception) { /* Dispose never throws */ }
         }
+    }
+
+    private void AddWarning(string warning)
+    {
+        if (string.IsNullOrWhiteSpace(warning)) return;
+        lock (_gate)
+        {
+            _warnings.Add(warning);
+            _lastUpdatedUtc = DateTimeOffset.UtcNow;
+        }
+    }
+
+    private static MemoryScannerOptions CreateBoundedMemoryOptions(MemoryScannerOptions? options)
+    {
+        var source = options ?? new MemoryScannerOptions();
+        return new MemoryScannerOptions
+        {
+            Enabled = source.Enabled,
+            MaxProcesses = Math.Clamp(source.MaxProcesses, 1, 256),
+            MaxRegionsPerProcess = Math.Clamp(source.MaxRegionsPerProcess, 1, 4096),
+            MaxBytesPerRegion = Math.Clamp(source.MaxBytesPerRegion, 1, 1024 * 1024),
+            MaxTotalBytes = Math.Clamp(source.MaxTotalBytes, 1, 64L * 1024 * 1024),
+            OverallTimeout = ClampDuration(source.OverallTimeout, TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1)),
+            PerProcessTimeout = ClampDuration(source.PerProcessTimeout, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15)),
+            HighEntropyThreshold = Math.Clamp(source.HighEntropyThreshold, 0, 8),
+            SkipTrustedSignedProcesses = source.SkipTrustedSignedProcesses,
+            SkipProtectedProcesses = source.SkipProtectedProcesses,
+            MaxFindings = Math.Clamp(source.MaxFindings, 1, 4096),
+        };
+    }
+
+    private static TimeSpan ClampDuration(TimeSpan value, TimeSpan fallback, TimeSpan maximum)
+    {
+        if (value <= TimeSpan.Zero) return fallback;
+        return value > maximum ? maximum : value;
     }
 }

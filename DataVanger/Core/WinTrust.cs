@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 
 namespace DataVanger.Core;
 
@@ -27,6 +28,13 @@ internal sealed class SignatureVerificationResult
     public bool IsSigned { get; init; }
     public string SignerSubject { get; init; } = "";
     public SignatureSource Source { get; init; } = SignatureSource.None;
+
+    /// <summary>
+    /// DER-encoded public signer certificate used for offline chain/name or
+    /// chain/thumbprint validation. Empty means certificate identity was not
+    /// available and stronger publisher modes must fail closed.
+    /// </summary>
+    public byte[] SignerCertificateRawData { get; init; } = Array.Empty<byte>();
 
     /// <summary>
     /// BETA 11D — true when an embedded signature is PRESENT but did not verify
@@ -137,6 +145,26 @@ internal static class WinTrust
         catch (System.Exception) { return ""; }
     }
 
+    /// <summary>
+    /// Returns the signer certificate's public DER bytes. No private material
+    /// exists in an Authenticode signature. Empty on unsupported/invalid input.
+    /// </summary>
+    public static byte[] GetSignerCertificateRawData(string filePath)
+    {
+        if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(filePath))
+            return Array.Empty<byte>();
+        try
+        {
+            using var legacy = X509Certificate.CreateFromSignedFile(filePath);
+            using var certificate = new X509Certificate2(legacy);
+            return certificate.Export(X509ContentType.Cert);
+        }
+        catch (Exception)
+        {
+            return Array.Empty<byte>();
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // BETA 11A — catalog-aware signature verification.
     //
@@ -181,11 +209,15 @@ internal static class WinTrust
             string subject;
             try { subject = EmbeddedSubjectOverride?.Invoke(filePath) ?? GetSignerSubject(filePath); }
             catch (Exception) { subject = ""; }
+            byte[] certificateRawData;
+            try { certificateRawData = GetSignerCertificateRawData(filePath); }
+            catch (Exception) { certificateRawData = Array.Empty<byte>(); }
             return new SignatureVerificationResult
             {
                 IsSigned = true,
                 SignerSubject = subject,
                 Source = SignatureSource.Embedded,
+                SignerCertificateRawData = certificateRawData,
             };
         }
 
@@ -342,12 +374,16 @@ internal static class WinTrust
             string subject;
             try { subject = GetSignerSubject(ci.wszCatalogFile); }
             catch (Exception) { subject = ""; }
+            byte[] certificateRawData;
+            try { certificateRawData = GetSignerCertificateRawData(ci.wszCatalogFile); }
+            catch (Exception) { certificateRawData = Array.Empty<byte>(); }
 
             return new SignatureVerificationResult
             {
                 IsSigned = true,
                 SignerSubject = subject,
                 Source = SignatureSource.Catalog,
+                SignerCertificateRawData = certificateRawData,
             };
         }
         catch (Exception)

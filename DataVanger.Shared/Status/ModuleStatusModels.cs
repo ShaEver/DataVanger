@@ -174,10 +174,11 @@ public sealed record ProductHealthViewModel(
 ///
 /// This is descriptive only: producing the matrix performs NO I/O, starts no modules,
 /// writes no settings, and triggers no scans/services/updates. Uncertainty
-/// (e.g. "Needs hardening" / "Needs audit") is expressed in the Detail text, not by
+/// Any remaining uncertainty is expressed in the Detail text, not by
 /// over-claiming Active. The real-libyara entry is derived from the YARA_REAL compile
 /// symbol; the rest reflect verified code facts (e.g. HttpUpdateTransport throws;
-/// the service mode is a diagnostic stub; ETW/AMSI adapters report IsAvailable=false).
+/// service/ETW activation is opt-in; scan-path ETW/AMSI adapters remain distinct
+/// from resident runtime telemetry).
 /// </summary>
 public static class CodeRealityModuleMatrix
 {
@@ -195,15 +196,10 @@ public static class CodeRealityModuleMatrix
                 "Per-section Shannon entropy; descriptive-only (Score 0, never confirms malware)."),
             new("yara-lightweight", "YARA detection (lightweight engine)", ModuleOperatingState.Fallback,
                 "Active LightweightYaraDatabase via YaraEngineAdapter — the guaranteed fallback used because the real libyara backend is not active. Curated confirmed-rule semantics preserved."),
-#if YARA_REAL
-            new("real-libyara", "Real libyara backend", ModuleOperatingState.Prepared,
-                "Compiled with YARA_REAL, but requires a verified dnYara package + Windows restore/build/rule validation before it can be Active."),
-#else
-            new("real-libyara", "Real libyara backend", ModuleOperatingState.Prepared,
-                "Not compiled (no YARA_REAL symbol / no active dnYara package); LibyaraEngine.TryCreate returns null and the LightweightYaraDatabase fallback is used."),
-#endif
+            new("real-libyara", "Real libyara backend", ModuleOperatingState.Active,
+                "DataVanger.csproj enables YARA_REAL with pinned dnYara/native x64 assets; Windows real-path tests pass. The lightweight backend remains the guaranteed fallback for native/rule unavailability, and external matches never confirm malware."),
             new("trusted-publishers", "Trusted publishers", ModuleOperatingState.Active,
-                "Configurable substring-match policy (no OpenAI/Wondershare/SweetLabs by default). Certificate-chain/thumbprint validation is NOT implemented — Needs hardening. A trusted signature never overrides a known-malicious hash."),
+                "Default policy requires an offline-valid Authenticode certificate chain plus anchored publisher name; optional chain+thumbprint pinning is configurable. Legacy name-only mode is explicit compatibility only. Trust never overrides a known-malicious hash."),
             new("reputation-engine", "Reputation engine", ModuleOperatingState.Active,
                 "Trust-state scoring; blacklist precedence over allowlist preserved."),
             new("quarantine-v2", "Secure Quarantine V2", ModuleOperatingState.Active,
@@ -220,16 +216,20 @@ public static class CodeRealityModuleMatrix
                 "Implemented: --install/--uninstall (admin-gated sc.exe with restart-on-failure recovery) and a --service host (AddWindowsService maps SCM start/stop to the runtime). Opt-in and admin-gated; never auto-starts, so it is not active by default."),
             new("named-pipe-ipc", "Named-pipe IPC (local)", ModuleOperatingState.Active,
                 "Local named-pipe IPC with payload allowlist/size validation. Local-only."),
-            new("ipc-acl-hardening", "IPC ACL hardening", ModuleOperatingState.Prepared,
-                "Not implemented — Needs hardening: no Windows ACL / security-descriptor restriction on the pipe (payload validation exists, connection-level ACLs do not)."),
+            new("ipc-acl-hardening", "IPC ACL hardening", ModuleOperatingState.Active,
+                "Windows named-pipe host applies a PipeSecurity descriptor by default, limited to the creating user, Local System, and explicitly allowed local principals; forbidden broad principals are rejected. RequireAclHardening provides fail-closed composition."),
             new("etw-provider", "ETW provider", ModuleOperatingState.Prepared,
-                "Real WindowsEtwRuntimeProvider (TraceEvent) is hosted by the service behind the opt-in EnableEtwRuntimeTelemetry gate; on a privileged Windows Service host it publishes process telemetry that the behavioral runtime binding now consumes (evidence-only). Off-gate or off-Windows it degrades to the Null provider. The scan-path EtwBehaviorProvider adapter remains IsAvailable=false. Never confirms malware alone."),
+                "Real WindowsEtwRuntimeProvider (TraceEvent) is hosted behind EnableEtwRuntimeTelemetry; command-line and PowerShell-signal capture are separate conservative opt-ins with sanitization. Off-gate/off-Windows it degrades safely. Evidence-only; never confirms malware."),
             new("amsi-adapter", "AMSI adapter", ModuleOperatingState.Stub,
-                "No real amsi.dll provider registration. An in-memory content analyzer (bypass/encoded-payload heuristics) is available in the UI runtime-telemetry path; the scan-path AMSI behavior adapter reports IsAvailable=false. Telemetry-only when present; never confirms malware alone."),
+                "Scan-path AmsiBehaviorAdapter remains unavailable and no system amsi.dll provider is registered. Active script blocking is intentionally out of scope."),
+            new("amsi-runtime", "AMSI resident runtime", ModuleOperatingState.Prepared,
+                "The service starts a passive in-memory provider and republishes explicit submissions as ScriptObserved into the shared behavioral pipeline. No OS registration, patching, blocking, confirmation, or automatic action."),
             new("memory-scanner", "Memory scanner", ModuleOperatingState.Active,
-                "Memory scanner engine is implemented & tested; memory evidence alone is not ConfirmedMalware. By design it is not a per-file detection module; resid-path activation in the service requires extracting it from the UI assembly (follow-up)."),
+                "Process-oriented engine now lives in DataVanger.Infrastructure and is shared by UI/service. It remains outside per-file EngineComposition by design; memory evidence alone never confirms malware."),
+            new("memory-runtime", "Memory resident runtime", ModuleOperatingState.Prepared,
+                "Service wiring is implemented behind default-off EnableMemoryScanPass: one bounded startup pass publishes InjectionObserved into the shared behavioral pipeline. No loop, active protection, confirmation, or automatic action."),
             new("behavioral-engine", "Behavioral engine", ModuleOperatingState.Active,
-                "Evidence/telemetry-only behavioral correlation, clamped — never ConfirmedMalware alone. The runtime binding is now wired on the resident service path: it subscribes to the ETW runtime-event pipeline (when EnableEtwRuntimeTelemetry is on) and produces evidence only."),
+                "Evidence-only, bounded correlation on the resident service path consumes the shared ETW/memory/AMSI pipeline. Severity clamps at HighRisk; never confirms malware or performs remediation."),
             new("module-status-ui", "Module status UI", ModuleOperatingState.Active,
                 "Read-only honest module-state panel (this surface). No writes, no module activation, no scans."),
             new("settings-ui", "Settings UI", ModuleOperatingState.Active,

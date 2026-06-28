@@ -35,6 +35,10 @@
     <!-- F1: the UI now composes the signed-update pipeline (SignedUpdateService +
          HttpUpdateTransport + FileSystemSignatureUpdateSink) that lives in the Engine project. -->
     <ProjectReference Include="..\DataVanger.Engine\DataVanger.Engine.csproj" />
+    <!-- Process-oriented memory scanning and in-memory AMSI telemetry live in
+         the OS-neutral shared infrastructure library so both the WPF UI and
+         the resident service can compose them without a service -> WPF edge. -->
+    <ProjectReference Include="..\DataVanger.Infrastructure\DataVanger.Infrastructure.csproj" />
   </ItemGroup>
 
   <!--

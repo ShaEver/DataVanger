@@ -106,6 +106,7 @@ public sealed class BehavioralRuntimeEventAdapter
         RuntimeEventCategory.ProcessCreated => BehavioralObservationKind.ProcessStart,
         RuntimeEventCategory.CommandLineObserved => BehavioralObservationKind.CommandLine,
         RuntimeEventCategory.ScriptObserved => BehavioralObservationKind.Script,
+        RuntimeEventCategory.InjectionObserved => BehavioralObservationKind.Tamper,
         RuntimeEventCategory.FileCreated => BehavioralObservationKind.FileActivity,
         RuntimeEventCategory.FileChanged => BehavioralObservationKind.FileActivity,
         RuntimeEventCategory.FileDeleted => BehavioralObservationKind.FileActivity,

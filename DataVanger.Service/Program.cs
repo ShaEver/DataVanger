@@ -160,6 +160,9 @@ internal static class Program
         Console.WriteLine($"  service-enabled    : {load.Configuration.ServiceEnabled}");
         Console.WriteLine($"  force-dev-mode     : {load.Configuration.ForceDevelopmentMode}");
         Console.WriteLine($"  etw-runtime-telem  : {load.Configuration.EnableEtwRuntimeTelemetry}");
+        Console.WriteLine($"  etw-command-line   : {load.Configuration.CaptureEtwCommandLine}");
+        Console.WriteLine($"  etw-powershell     : {load.Configuration.CaptureEtwPowerShellSignals}");
+        Console.WriteLine($"  memory-scan-pass   : {load.Configuration.EnableMemoryScanPass}");
         Console.WriteLine($"  warning-count      : {load.Warnings.Count}");
         for (int i = 0; i < load.Warnings.Count; i++)
         {

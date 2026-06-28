@@ -55,5 +55,27 @@ public sealed class DataVangerServiceConfiguration
     /// </summary>
     public bool EnableEtwRuntimeTelemetry { get; init; } = false;
 
+    /// <summary>
+    /// Opt-in ETW command-line capture. Defaults OFF. Values pass through the
+    /// existing bounded sanitizer before entering runtime-event metadata.
+    /// </summary>
+    public bool CaptureEtwCommandLine { get; init; } = false;
+
+    /// <summary>
+    /// Opt-in PowerShell indicator extraction from ETW command lines. Defaults
+    /// OFF and remains heuristic-only; it never confirms malware.
+    /// </summary>
+    public bool CaptureEtwPowerShellSignals { get; init; } = false;
+
+    /// <summary>
+    /// Opt-in gate (default OFF) for one bounded process-memory scan pass
+    /// during resident-runtime startup. The pass uses
+    /// <c>MemoryScannerOptions</c> safe bounds, publishes findings as
+    /// heuristic runtime events, and never starts a loop or authorizes
+    /// remediation. Unsupported readers and permission failures degrade to a
+    /// warning without failing service startup.
+    /// </summary>
+    public bool EnableMemoryScanPass { get; init; } = false;
+
     public static DataVangerServiceConfiguration SafeDefaults() => new();
 }

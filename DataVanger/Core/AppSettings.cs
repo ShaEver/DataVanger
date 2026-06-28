@@ -28,12 +28,11 @@ public class AppSettings
     // User-editable additive list, merged on top of TrustedPublishers.
     public List<string> ExtraTrustedPublishers { get; set; } = new();
 
-    // Phase 11 — opt-in publisher identity assurance. Default Substring preserves the legacy
-    // case-insensitive trusted-name match exactly (no behaviour change). Stronger modes
-    // (ChainAndName / ChainAndThumbprint) require certificate evidence and are validated by
-    // PublisherIdentity; on the current name-only signer path they fail closed. Enabling a
-    // stronger default is approval-gated and needs Windows corpus validation.
-    public PublisherValidationMode PublisherValidationMode { get; set; } = PublisherValidationMode.Substring;
+    // Publisher identity assurance. The conservative default requires an offline-valid
+    // Authenticode certificate chain plus an anchored publisher-name match. Operators may
+    // choose ChainAndThumbprint for explicit pinning. The legacy Substring mode remains
+    // available only as an explicit compatibility setting; it is no longer the default.
+    public PublisherValidationMode PublisherValidationMode { get; set; } = PublisherValidationMode.ChainAndName;
 
     // Optional certificate thumbprints to pin under ChainAndThumbprint. Empty/malformed entries
     // never grant trust. Not used by the default Substring mode.
@@ -184,8 +183,9 @@ public class AppSettings
         loaded.TrustedPublisherThumbprints ??= new List<string>(); // phase 11: explicit null -> empty
 
         // v0 (pre-versioning baseline) and v1 require only the normalisation above.
-        // PublisherValidationMode is an additive optional field; an absent value deserialises to
-        // the Substring default, so no schema-version bump is required for backward compatibility.
+        // PublisherValidationMode is additive. An absent value receives the current
+        // ChainAndName initializer; an explicitly persisted legacy Substring value is
+        // preserved for compatibility.
         _ = fromVersion;
         loaded.SchemaVersion = CurrentSchemaVersion;
         return loaded;

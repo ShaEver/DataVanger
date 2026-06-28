@@ -141,7 +141,7 @@ Enforced in `DataVanger/Core/ThreatClassificationPolicy.cs` and
 | Signed-update HTTP transport (`HttpUpdateTransport` throws) | **Stub** |
 | Windows service (`--service` diagnostic stub) | **Stub** |
 | Real ETW / AMSI providers (`IsAvailable=false`) | **Prepared/Stub** |
-| Named-pipe IPC ACLs | **Needs hardening** (payload validation exists; no Windows ACL/SD restriction) |
+| Named-pipe IPC ACLs | **Active on Windows, cfg-gated** (`PipeSecurity` restricts local principals; fail-closed mode available) |
 | Memory scanner / behavioral engine in the per-file scan set | **Needs audit** (engines exist + are tested, but are not wired into `EngineComposition`) |
 
 Full detail with file references: [`docs/MODULE_STATUS_MATRIX.md`](docs/MODULE_STATUS_MATRIX.md).

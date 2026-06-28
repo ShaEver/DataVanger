@@ -98,13 +98,19 @@ public class SignatureTrustCacheTests
 
             var cache = new SignatureTrustCache(cachePath);
             cache.Store(file, "fp1", new SignatureVerificationResult
-            { IsSigned = true, SignerSubject = "CN=Catalog Signer", Source = SignatureSource.Catalog });
+            {
+                IsSigned = true,
+                SignerSubject = "CN=Catalog Signer",
+                Source = SignatureSource.Catalog,
+                SignerCertificateRawData = new byte[] { 1, 2, 3, 4 },
+            });
             cache.Persist();
 
             var reloaded = new SignatureTrustCache(cachePath);
             Xunit.Assert.True(reloaded.TryGet(new FileInfo(filePath), "fp1", out var got));
             Xunit.Assert.Equal(SignatureSource.Catalog, got.Source);
             Xunit.Assert.Equal("CN=Catalog Signer", got.SignerSubject);
+            Xunit.Assert.Equal(new byte[] { 1, 2, 3, 4 }, got.SignerCertificateRawData);
         }
         finally { Directory.Delete(dir, true); }
     }

@@ -47,10 +47,11 @@ docs/                           this documentation set
 - Classification: `ThreatClassificationPolicy` / `AntiFalsePositivePolicy` decide
   `ConfirmedMalware` vs `HighRisk` vs lower (see Anti-FP policy below).
 
-> Note: `DataVanger/Memory/*` and `DataVanger/Behavioral/*` engines exist and are
-> exercised by tests, but are **not** part of the per-file `EngineComposition` module
-> set (they serve the runtime/service path). Their integration into the main scan is
-> **Needs audit** — do not document them as part of file-scan detection.
+> Note: the shared process-memory engine is in
+> `DataVanger.Infrastructure/Memory/*`; behavioral runtime code is in
+> `DataVanger.Engine/Behavioral/Runtime/*`. They are exercised on the resident
+> service pipeline (memory/ETW/AMSI), but are intentionally **not** per-file
+> `EngineComposition` modules. Do not document them as file-scan detection.
 
 ## 3. How to add a detection module
 

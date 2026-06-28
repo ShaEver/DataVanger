@@ -128,7 +128,16 @@ public class Beta11AcceptanceCorpusTests
         return new CorpusResult(score, ThreatClassificationPolicy.Classify(finding), hasActionable, trustLevel);
     }
 
-    private static AppSettings TrustMicrosoft() => new() { TrustedPublishers = new List<string> { "Microsoft" } };
+    // Synthetic corpus fixtures do not carry a real X509 certificate, so they
+    // explicitly use the compatibility identity mode while exercising the
+    // downstream trust recalibration. Windows integration below uses the
+    // production ChainAndName mode with a real Authenticode certificate.
+    private static AppSettings TrustMicrosoft(
+        PublisherValidationMode mode = PublisherValidationMode.Substring) => new()
+    {
+        TrustedPublishers = new List<string> { "Microsoft" },
+        PublisherValidationMode = mode,
+    };
 
     // ===================== FALSE-POSITIVE REDUCTION (RC-1..RC-7) =====================
 
@@ -348,7 +357,8 @@ public class Beta11AcceptanceCorpusTests
         var sig = WinTrust.VerifySignature(dll);
         Xunit.Assert.True(sig.IsSigned, "A core System32 component must verify as signed (embedded or catalog).");
 
-        var level = PublisherIdentity.EvaluatePublisherTrust(sig, TrustMicrosoft());
+        var level = PublisherIdentity.EvaluatePublisherTrust(
+            sig, TrustMicrosoft(PublisherValidationMode.ChainAndName));
         Xunit.Assert.True(level is PublisherTrustLevel.Trusted or PublisherTrustLevel.TrustedWindowsComponent,
             "A signed Microsoft System32 component must map to trusted publisher / Windows component.");
     }

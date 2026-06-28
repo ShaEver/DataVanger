@@ -128,15 +128,17 @@ public class ServiceEtwTelemetryTests
     }
 
     [Fact]
-    public async Task EtwDisabled_BehavioralRuntime_StaysPlaceholder()
+    public async Task EtwDisabled_BehavioralRuntime_StaysPassiveForAmsiSubmissions()
     {
         using var rt = new DataVangerServiceRuntime(
             DataVangerServiceConfiguration.SafeDefaults(), DataVangerRuntimeMode.Service);
         await rt.StartAsync(CancellationToken.None);
 
         var snap = rt.GetStatusSnapshot();
-        Assert.Contains(snap.Modules, m => m.Name == "BehavioralRuntimePlaceholder");
-        Assert.DoesNotContain(snap.Modules, m => m.Name == "BehavioralRuntime");
+        var behavioral = Assert.Single(snap.Modules, m => m.Name == "BehavioralRuntime");
+        Assert.Equal(RuntimeModuleAvailability.Passive, behavioral.Availability);
+        Assert.Contains(snap.Modules, m => m.Name == "AmsiRuntime"
+            && m.Availability == RuntimeModuleAvailability.Passive);
         Assert.False(snap.HasActiveProtection);
 
         await rt.StopAsync(CancellationToken.None);
@@ -178,6 +180,23 @@ public class ServiceEtwTelemetryTests
         var capped = new EtwProviderConfiguration { MaxEventsPerSecond = 10_000_000, MaxQueueSize = 10_000_000 }.WithSafeDefaults();
         Assert.True(capped.MaxEventsPerSecond <= 100_000);
         Assert.True(capped.MaxQueueSize <= 1_000_000);
+    }
+
+    [Fact]
+    public void ServiceEtwRichCapture_DefaultsOff_AndRequiresExplicitConfiguration()
+    {
+        var defaults = DataVangerServiceConfiguration.SafeDefaults();
+        Assert.False(defaults.CaptureEtwCommandLine);
+        Assert.False(defaults.CaptureEtwPowerShellSignals);
+
+        var optedIn = new DataVangerServiceConfiguration
+        {
+            EnableEtwRuntimeTelemetry = true,
+            CaptureEtwCommandLine = true,
+            CaptureEtwPowerShellSignals = true,
+        };
+        Assert.True(optedIn.CaptureEtwCommandLine);
+        Assert.True(optedIn.CaptureEtwPowerShellSignals);
     }
 
     // ── Clamp proof: runtime/behavioral evidence can NEVER confirm malware ───

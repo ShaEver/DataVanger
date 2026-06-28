@@ -8,8 +8,9 @@ using System.Text;
 namespace DataVanger.Core;
 
 /// <summary>
-/// Identity-assurance tiers for trusted-publisher decisions (phase 11).
-/// The default is <see cref="Substring"/>, which preserves the legacy behaviour exactly.
+/// Identity-assurance tiers for trusted-publisher decisions.
+/// The application default is <see cref="ChainAndName"/>; Substring remains
+/// available only as an explicit compatibility mode.
 /// </summary>
 public enum PublisherValidationMode
 {
@@ -47,8 +48,8 @@ public enum PublisherTrustLevel
 /// Opt-in, fail-safe publisher identity evaluator.
 ///
 /// Honesty / safety contract (enforced by this code, not just documented):
-///   - Default mode <see cref="PublisherValidationMode.Substring"/> reproduces the legacy
-///     case-insensitive trusted-name match — no behaviour change by default.
+///   - Default mode <see cref="PublisherValidationMode.ChainAndName"/> requires
+///     offline-valid certificate-chain evidence plus an anchored name match.
 ///   - Stronger modes require certificate evidence. When the caller only has a signer-name
 ///     string (the CURRENT production path via <c>WinTrust.GetSignerSubject</c>), stronger modes
 ///     <b>fail closed</b> (<see cref="IsTrustedByName"/> returns false) — missing/failed
@@ -162,7 +163,27 @@ public static class PublisherIdentity
                 ? PublisherTrustLevel.Invalid
                 : PublisherTrustLevel.Unsigned;
 
-        if (!IsTrustedPublisherName(result.SignerSubject, settings))
+        bool trusted;
+        if (settings?.PublisherValidationMode == PublisherValidationMode.Substring)
+        {
+            trusted = IsTrustedPublisherName(result.SignerSubject, settings);
+        }
+        else
+        {
+            trusted = false;
+            try
+            {
+                if (result.SignerCertificateRawData.Length > 0)
+                {
+                    using var certificate = new X509Certificate2(result.SignerCertificateRawData);
+                    trusted = IsTrustedByCertificate(certificate, settings);
+                }
+            }
+            catch (CryptographicException) { trusted = false; }
+            catch (ArgumentException) { trusted = false; }
+        }
+
+        if (!trusted)
             return PublisherTrustLevel.Valid;
 
         bool microsoft = MatchesTrustedNameAnchored(result.SignerSubject, new[] { "Microsoft" });
@@ -243,10 +264,10 @@ public static class PublisherIdentity
         switch (settings.PublisherValidationMode)
         {
             case PublisherValidationMode.Substring:
-                return MatchesTrustedName(cert.Subject, TrustedNames(settings));
+                return MatchesTrustedNameAnchored(cert.Subject, TrustedNames(settings));
 
             case PublisherValidationMode.ChainAndName:
-                return ValidateChain(cert) && MatchesTrustedName(cert.Subject, TrustedNames(settings));
+                return ValidateChain(cert) && MatchesTrustedNameAnchored(cert.Subject, TrustedNames(settings));
 
             case PublisherValidationMode.ChainAndThumbprint:
                 return ValidateChain(cert)

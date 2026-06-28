@@ -143,7 +143,13 @@ public class PublisherTrustHardeningTests
         var s = new AppSettings();
         Xunit.Assert.Contains(s.TrustedPublishers, p => p.Equals("Anthropic", StringComparison.OrdinalIgnoreCase));
         Xunit.Assert.DoesNotContain(s.TrustedPublishers, p => p.IndexOf("OpenAI", StringComparison.OrdinalIgnoreCase) >= 0);
+        Xunit.Assert.Equal(PublisherValidationMode.ChainAndName, s.PublisherValidationMode);
 
+        // Default stronger mode cannot grant trust from a name string alone.
+        Xunit.Assert.False(PublisherIdentity.IsTrustedPublisherName("CN=\"Anthropic, PBC\", O=\"Anthropic, PBC\"", s));
+
+        // Explicit compatibility mode retains the anchored anti-spoof matcher.
+        s.PublisherValidationMode = PublisherValidationMode.Substring;
         Xunit.Assert.True(PublisherIdentity.IsTrustedPublisherName("CN=\"Anthropic, PBC\", O=\"Anthropic, PBC\"", s));
         Xunit.Assert.False(PublisherIdentity.IsTrustedPublisherName("CN=Definitely Not Anthropic Inc", s));
         Xunit.Assert.False(PublisherIdentity.IsTrustedPublisherName("CN=Anthropics United", s));

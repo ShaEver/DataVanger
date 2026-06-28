@@ -20,8 +20,12 @@ public class ModuleStatusTests
         CodeRealityModuleMatrix.Create().Single(m => m.Key == key);
 
     [Fact]
-    public void CodeReality_RealLibyara_IsNotActive() =>
-        Assert.NotEqual(ModuleOperatingState.Active, Find("real-libyara").State); // Prepared, never Active here
+    public void CodeReality_RealLibyara_IsActive_WithFallbackStillDocumented()
+    {
+        var yara = Find("real-libyara");
+        Assert.Equal(ModuleOperatingState.Active, yara.State);
+        Assert.Contains("fallback", yara.Detail, StringComparison.OrdinalIgnoreCase);
+    }
 
     [Fact]
     public void CodeReality_LightweightYara_IsFallback() =>
@@ -50,12 +54,25 @@ public class ModuleStatusTests
     }
 
     [Fact]
-    public void CodeReality_IpcAclHardening_IsNotActive_AndDetailFlagsHardening()
+    public void CodeReality_IpcAclHardening_IsActive_AndFailClosedCapable()
     {
         var acl = Find("ipc-acl-hardening");
-        Assert.NotEqual(ModuleOperatingState.Active, acl.State);
-        Assert.Contains("hardening", acl.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(ModuleOperatingState.Active, acl.State);
+        Assert.Contains("fail-closed", acl.Detail, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void CodeReality_MemoryAndAmsiResidentPaths_ArePrepared_NeverActiveProtection()
+    {
+        Assert.Equal(ModuleOperatingState.Prepared, Find("memory-runtime").State);
+        Assert.Equal(ModuleOperatingState.Prepared, Find("amsi-runtime").State);
+        Assert.False(Find("memory-runtime").IsActiveProtection);
+        Assert.False(Find("amsi-runtime").IsActiveProtection);
+    }
+
+    [Fact]
+    public void CodeReality_PublisherTrust_UsesCertificateChainByDefault() =>
+        Assert.Contains("certificate chain", Find("trusted-publishers").Detail, StringComparison.OrdinalIgnoreCase);
 
     [Fact]
     public void CodeReality_NamedPipeIpc_IsActiveLocalOnly() =>

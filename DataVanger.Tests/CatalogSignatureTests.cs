@@ -129,13 +129,34 @@ public class CatalogSignatureTests
     }
 
     [Xunit.Fact]
-    public void CatalogSignerSubject_FlowsThroughExistingTrustedPublisherPath()
+    public void CatalogSignerName_DefaultModeFailsClosed_CompatibilityModeIsAnchored()
     {
-        // A catalog signer subject (e.g. Microsoft) must be trusted by the SAME,
-        // unchanged publisher path the engine already uses for embedded signers.
-        var settings = new AppSettings(); // default Substring mode, includes "Microsoft"
-        Xunit.Assert.True(PublisherIdentity.IsTrustedByName(
+        var settings = new AppSettings();
+        Xunit.Assert.Equal(PublisherValidationMode.ChainAndName, settings.PublisherValidationMode);
+        Xunit.Assert.False(PublisherIdentity.IsTrustedByName(
             "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US", settings));
+
+        settings.PublisherValidationMode = PublisherValidationMode.Substring;
+        Xunit.Assert.True(PublisherIdentity.IsTrustedPublisherName(
+            "CN=Microsoft Windows, O=Microsoft Corporation, L=Redmond, S=Washington, C=US", settings));
+    }
+
+    [Xunit.Fact]
+    public void Integration_System32Component_CertificateBacksDefaultPublisherTrust_OnWindows()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        var path = Path.Combine(Environment.SystemDirectory, "kernel32.dll");
+        if (!File.Exists(path)) return;
+
+        var signature = WinTrust.VerifySignature(path, allowCatalog: true);
+        Xunit.Assert.True(signature.IsSigned);
+        Xunit.Assert.NotEmpty(signature.SignerCertificateRawData);
+
+        var trust = PublisherIdentity.EvaluatePublisherTrust(signature, new AppSettings());
+        Xunit.Assert.True(
+            trust is PublisherTrustLevel.Trusted or PublisherTrustLevel.TrustedWindowsComponent,
+            $"Expected certificate-backed Microsoft trust, got {trust} ({signature.SignerSubject}).");
     }
 
     [Xunit.Fact]

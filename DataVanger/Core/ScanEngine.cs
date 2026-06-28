@@ -536,6 +536,7 @@ public class ScanEngine : IScanEngine
             BaseScore = score,
             IsSigned = isSigned,
             Publisher = publisher,
+            PublisherTrusted = trustedPublisher,
             HasConfirmedEvidence = isKnownMalware || hasConfirmedSignature || outcome.AnyConfirmedEvidence,
             IsKnownMalicious = isKnownMalware,
             IsKnownSafe = knownSafeHash,

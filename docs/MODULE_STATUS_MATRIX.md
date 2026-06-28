@@ -15,11 +15,13 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 | **Degraded** | Active but operating in a limited mode. |
 | **Needs audit** | State could not be conclusively determined / a code-vs-intent gap exists. |
 
-> Final Windows validation for `22_FINAL_STABILIZATION` executed on 2026-06-10
-> (Windows x64, .NET SDK 10.0.301 with .NET 8 WindowsDesktop runtime 8.0.28).
-> Build, test, hard real-YARA, publish/native deployment, invariant, and warning gates passed.
-> This exported workspace has no `.git` metadata, so branch/commit provenance could not be
-> captured here.
+> Current implementation validation executed on 2026-06-27 (Windows x64,
+> .NET SDK 10.0.301 with .NET 8 WindowsDesktop runtime 8.0.28).
+> Build, full/filtered tests, real-YARA, Authenticode-chain integration, and
+> anti-FP gates passed. SCM install/service/uninstall and a privileged real ETW
+> session were not run because this process is not elevated. This exported
+> workspace has no `.git` metadata and no GitHub CLI, so branch/commit/PR
+> provenance could not be produced here.
 
 ---
 
@@ -33,10 +35,10 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 | PE section entropy | **Active** | `DataVanger/Detection/PeDetectionModule.cs` (`AnalyzeEntropyBySectionAsync`, `HighDataSectionEntropy=7.5`) — descriptive-only (Score 0, never confirms) |
 | YARA lightweight engine | **Active / Fallback** | `DataVanger/Core/LightweightYaraDatabase.cs` via `DataVanger/Infrastructure/YaraEngineAdapter.cs` — always-valid YARA backend; also the guaranteed fallback |
 | Real libyara backend | **Active (compiled-in; Windows-validated per 22_FINAL_STABILIZATION) / Fallback guaranteed** | `DataVanger/Infrastructure/LibyaraEngine.cs` (`#if YARA_REAL`, lifetime-scoped `YaraContext`, idempotent `Dispose`, no invalid `Scanner.Dispose`). **`YARA_REAL` is ACTIVE** in `DataVanger/DataVanger.csproj` with pinned `dnYara 2.1.0` + `dnYara.NativePack 2.1.0.3` (native `libyara.dll` copied as native content via `ExcludeAssets=all` + explicit `<None>`, `PlatformTarget x64`). `ScanEngine` disposes the real engine after each scan. `TryCreate` → null on native-unavailable / zero-rules, so the lightweight engine stays the guaranteed fallback. Real external matches are forced `Confirmed=false, Score=0` (never confirm). Final hard validation passed on Windows x64 with `DATAVANGER_REQUIRE_REAL_YARA=1`: `~Yara` 22 passed / 0 failed / 0 skipped, including the real-path `RealYaraBackend_*` tests. |
-| Trusted publishers | **Active** (substring) | `DataVanger/Core/AppSettings.cs` (`TrustedPublishers` + `ExtraTrustedPublishers`), `DataVanger/Reputation/ReputationEngine.cs` / `DataVanger/Core/ScanEngine.cs` (`IsPublisherTrusted`). **Substring match only — certificate-chain/thumbprint validation is Needs hardening (future phase).** Never overrides a malicious hash. |
+| Trusted publishers | **Active** (certificate-backed) | `DataVanger/Core/WinTrust.cs` retains the signer certificate; `PublisherIdentity.cs` defaults to offline `ChainAndName` and supports `ChainAndThumbprint`; `SignatureTrustCache.cs` preserves the public certificate across cache hits. Legacy name-only matching is explicit compatibility mode and remains anchored/spoof-resistant. `ScanEngine` passes the certificate-backed decision into reputation, and known-malicious hash precedence is unchanged. |
 | Reputation engine | **Active** | `DataVanger/Reputation/ReputationEngine.cs` (trust-state scoring; known-bad/known-good precedence; trusted-signer relief gated on `!knownBad`) |
-| Memory scanner | **Active (standalone) / not in scan composition by design** | Engine exists (`DataVanger/Memory/*`, e.g. `IMemoryScanner.cs`, `MemoryBehavioralBridge.cs`) and is exercised by the legacy parity tests. It is process-oriented, not a per-file `IDetectionModule`, so it is intentionally **not** in `EngineComposition`. Running it on the resident service path requires extracting `DataVanger.Memory.*` out of the UI assembly (`DataVanger.Service` does not reference the WPF `DataVanger` project) — tracked as a follow-up. |
-| Behavioral engine | **Active — now wired on the resident path** | In-process engine exists (`DataVanger/Behavioral/BehavioralCorrelationEngine.cs` + rules). The runtime binding (`DataVanger.Engine/Behavioral/Runtime/BehavioralRuntimeBinding.cs`) is now subscribed to the ETW runtime-event pipeline by `DataVanger.Service/Runtime/DataVangerServiceRuntime.cs` (opt-in via `EnableEtwRuntimeTelemetry`). Evidence-only; heuristic-only; clamps to HighRisk; never confirms malware and never acts. Not a per-file `EngineComposition` module by design. |
+| Memory scanner | **Active engine / Prepared resident pass** | Process-oriented engine and readers now live in OS-neutral `DataVanger.Infrastructure/Memory/*` while preserving `DataVanger.Memory.*` namespaces. The service references Infrastructure directly (never WPF). `EnableMemoryScanPass` (default OFF) runs one bounded startup pass and `MemoryRuntimeBridge` publishes `InjectionObserved` into the shared pipeline. No resident loop; not a per-file `IDetectionModule`; never confirms or acts. |
+| Behavioral engine | **Active — wired on the resident path** | The bounded runtime binding (`DataVanger.Engine/Behavioral/Runtime/BehavioralRuntimeBinding.cs`) consumes the single ETW/memory/AMSI pipeline composed by `DataVangerServiceRuntime`. `InjectionObserved` degrades into tamper evidence and `ScriptObserved` drives conservative script rules. Evidence-only; clamps to HighRisk; never confirms malware and never acts. |
 
 ## Quarantine, scheduling, realtime
 
@@ -59,14 +61,15 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 |---|---|---|
 | Windows service mode | **Prepared (implemented; opt-in)** | `DataVanger.Service/Hosting/WindowsServiceInstaller.cs` implements `--install`/`--uninstall` via admin-gated `sc.exe` (with restart-on-failure recovery); `Program.cs` `--service` hosts the runtime via `AddWindowsService` (`DataVangerServiceWorker : IHostedService`) and maps SCM start/stop to the runtime. Admin-gated, never auto-starts, no silent elevation. `--console`/`--status`/`--validate-config`/`--help` also work. (Earlier "Stub" entry was stale.) |
 | Named Pipe IPC | **Active (local, payload-validated)** | `DataVanger.Infrastructure/Ipc/NamedPipeDataVangerServiceHost.cs` / `NamedPipeDataVangerServiceClient.cs`, `IpcSecurityPolicy.cs`, `NamedPipeFraming.cs`, `IpcSerialization.cs`; handlers in `DataVanger.Service/Ipc/*` |
-| IPC ACLs | **Needs hardening** | No `PipeSecurity`/security-descriptor restriction implemented; `NamedPipeDataVangerServiceHost.cs:25` notes "Future ACL hardening (PipeSecurity) can be added". Payload allowlist/size validation exists, but connection-level ACLs do not. |
+| IPC ACLs | **Active (Windows, cfg-gated)** | `IpcPipeSecurity.cs` builds a `PipeSecurity` descriptor and `NamedPipeDataVangerServiceHost` applies it by default on Windows. Access is limited to the creating user, Local System, and explicitly allowed local principals; broad forbidden principals are rejected. `RequireAclHardening` provides a fail-closed gate. Payload allowlist/size validation remains independent. |
 
 ## Runtime telemetry
 
 | Module | Status | Evidence (file) |
 |---|---|---|
-| ETW provider | **Active (real, Windows-validated per Phase 17) / Fallback — now consumed** | Real provider `DataVanger.Infrastructure/Etw/WindowsEtwRuntimeProvider.cs` (TraceEvent) was Windows-validated in Phase 17 (real session creation, `logman` visibility, disposal). **Gap closed:** `DataVanger.Service/Runtime/DataVangerServiceRuntime.cs` now binds a `BehavioralRuntimeBinding` to the same runtime-event pipeline the provider publishes into (opt-in via `EnableEtwRuntimeTelemetry`), so real process telemetry is correlated into evidence-only behavioral signals instead of going to a pipeline with no consumer. Behavior adapter `DataVanger/Behavioral/Adapters/EtwBehaviorProvider.cs:23` (scan path) remains a **Stub** (`IsAvailable => false`); Null/InMemory providers are the **Fallback**. Never confirms malware alone. |
-| AMSI adapter | **Stub** | `DataVanger/Behavioral/Adapters/AmsiBehaviorAdapter.cs:17` `IsAvailable => false`. Seam present; no real amsi.dll integration. Never confirms malware alone. |
+| ETW provider | **Prepared/opt-in real provider + Fallback** | `WindowsEtwRuntimeProvider` is hosted behind `EnableEtwRuntimeTelemetry`; it publishes into the shared resident pipeline. `CaptureEtwCommandLine` and `CaptureEtwPowerShellSignals` are separate default-OFF settings and reuse sanitization/indicator helpers. Null/InMemory providers remain safe fallbacks. No confirmation or action authority. |
+| AMSI scan-path adapter | **Stub** | `DataVanger/Behavioral/Adapters/AmsiBehaviorAdapter.cs` remains unavailable; no system provider is registered and no script is blocked. |
+| AMSI resident runtime | **Prepared / Passive when service runs** | OS-neutral provider code lives in `DataVanger.Infrastructure/Runtime/Amsi/*`. `DataVangerServiceRuntime` starts `InMemoryAmsiProvider`; `AmsiRuntimeBridge` republishes explicit `SubmitAmsiContent` observations as `ScriptObserved` with indicator metadata into the shared behavioral pipeline. No `amsi.dll` patch/registration, blocking, confirmation, or automatic action. |
 
 ## UI, settings, reporting
 
@@ -80,7 +83,7 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 
 | Module | Status | Evidence (file) |
 |---|---|---|
-| xUnit tests | **Active** | `DataVanger.Tests/DataVanger.Tests.csproj` (xunit 2.9, runner 2.8, Test.Sdk 17, coverlet 6); `DataVanger.Tests/TestSupport/TestParallelization.cs` disables parallelization. Final validation: full default suite 168 passed / 0 failed / 0 skipped; full `--arch x64` suite 168 passed / 0 failed / 0 skipped. |
+| xUnit tests | **Active** | `DataVanger.Tests/DataVanger.Tests.csproj` (xunit 2.9, runner 2.8, Test.Sdk 17, coverlet 6); `TestParallelization.cs` disables parallelization. 2026-06-27 Windows x64: full suite **675/675**; filtered ETW **16**, AMSI **7**, Service **74**, Memory **5**, YARA **27**, Publisher **50**, IPC ACL **29**, AntiFalsePositive **14**; `DATAVANGER_REQUIRE_REAL_YARA=1` YARA **27/27**. |
 | LegacyParityTests | **Active (faithful-wrapper mega-test)** | `DataVanger.Tests/LegacyParityTests.cs` — one `[Fact]` (`DataVanger_LegacySuite_AllChecksPass`, now `async Task`) wrapping ≈49 sections; sync file-scoped helper classes keep blocking calls (documented `xUnit1031-deferred`). Phase 08 + correction applied; final Windows build/test validation passed. Decomposition is a future phase. |
 | AntiFalsePositive tests | **Active** | `DataVanger.Tests/AntiFalsePositiveTests.cs` (3 Facts; `--filter ~AntiFalsePositive`) |
 | Publisher tests | **Active** | `DataVanger.Tests/TrustedPublisherSettingsTests.cs` (4 Facts; `--filter ~Publisher`) |
@@ -108,18 +111,13 @@ Source: `DataVanger/Core/ThreatClassificationPolicy.cs` (`Classify`,
 
 ## Needs-audit gaps (do not guess — confirm in code/Windows)
 
-1. **Memory scanner & behavioral engine** — resolved (by design, not per-file
-   `EngineComposition` modules). The **behavioral** engine's runtime binding is now
-   subscribed to the ETW runtime-event pipeline in `DataVangerServiceRuntime`
-   (opt-in `EnableEtwRuntimeTelemetry`, evidence-only). The **memory** scanner stays
-   standalone; running it on the resident service path needs `DataVanger.Memory.*`
-   (and the AMSI providers) extracted from the UI `DataVanger` assembly into a shared
-   library, since `DataVanger.Service` does not reference the WPF project — follow-up.
+1. **Memory/AMSI resident wiring** — resolved. Shared code is in
+   `DataVanger.Infrastructure`; the service has no WPF reference; memory is a
+   bounded default-OFF startup pass; AMSI is explicit-submission observation.
 2. **Module status UI** — confirm whether any UI view surfaces
    `ModuleStatusAggregator`'s Active/Prepared/Stub taxonomy (future phase 18).
 3. **Reporting CSV** — re-verify CSV quoting / CSV-injection handling in
    `ReportGenerator` / `ReportService`.
 4. **Git provenance** — this validation workspace is an exported source tree without
-   `.git`, so branch/commit/clean-tree values and the requested documentation commit could
-   not be produced here. Build/test/publish gates were run from the folder containing
-   `DataVanger.sln`.
+   `.git`, and `gh` is unavailable, so branches/commits/pushes/PRs could not be
+   produced here. Build/test gates were run from the folder containing `DataVanger.sln`.

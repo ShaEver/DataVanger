@@ -37,6 +37,12 @@ public sealed class ReputationSubject
     public int BaseScore { get; init; }
     public bool IsSigned { get; init; }
     public string Publisher { get; init; } = "";
+    /// <summary>
+    /// Certificate-backed trust decision from the scan-time Authenticode path.
+    /// Null lets standalone reputation callers use their configured legacy
+    /// name-only behavior; scan composition always supplies a value.
+    /// </summary>
+    public bool? PublisherTrusted { get; init; }
     public bool HasConfirmedEvidence { get; init; }
     public bool IsKnownMalicious { get; init; }
     public bool IsKnownSafe { get; init; }
@@ -101,7 +107,9 @@ public sealed class ReputationEngine
         }
 
         string signerStatus = subject.IsSigned ? "Signed" : "Unsigned";
-        if (!knownBad && subject.IsSigned && IsTrustedPublisher(subject.Publisher))
+        bool publisherTrusted = subject.PublisherTrusted
+            ?? IsTrustedPublisher(subject.Publisher);
+        if (!knownBad && subject.IsSigned && publisherTrusted)
         {
             signerStatus = "TrustedSigner";
             state = MoreTrusted(state, ReputationTrustState.LikelyGood);
