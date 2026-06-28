@@ -118,7 +118,8 @@ public sealed class ReputationEngine
             score += trustedSignerDelta;
             Add(reasons, evidence, $"Assinatura válida de fornecedor confiável: {subject.Publisher}", trustedSignerDelta, EvidenceStrength.Info);
         }
-        else if (!subject.IsSigned && IsExecutableLike(subject.Extension) && IsUserWritablePath(subject.Path))
+        else if (!subject.IsSigned && IsExecutableLike(subject.Extension) && IsUserWritablePath(subject.Path)
+                 && !IsBenignVendorOrContainer(subject.Path))
         {
             score += 2;
             state = MoreRisky(state, ReputationTrustState.Suspicious);
@@ -281,6 +282,17 @@ public sealed class ReputationEngine
     {
         string p = path.ToLowerInvariant();
         return p.Contains("\\users\\") || p.Contains("\\appdata\\") || p.Contains("\\temp\\") || p.Contains("\\downloads\\") || p.Contains("\\desktop\\");
+    }
+
+    // Known dev/Electron containers and trusted vendor app dirs: an unsigned binary/script
+    // there is benign noise (node_modules, vscode/claude extensions, Brave/Discord/Spotify
+    // under LocalAppData, etc.). Reuses the same path vocabulary as the heuristic suppression.
+    private static bool IsBenignVendorOrContainer(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return false;
+        string p = path.ToLowerInvariant();
+        return DataVanger.Detection.PathTaxonomy.IsKnownBenignScriptContainer(p)
+            || DataVanger.Detection.PathTaxonomy.IsTrustedPath(p);
     }
 
     private static bool IsBrowserExtensionContext(string path)

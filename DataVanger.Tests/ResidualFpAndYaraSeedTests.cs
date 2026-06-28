@@ -79,4 +79,22 @@ public class ResidualFpAndYaraSeedTests
             try { Directory.Delete(root, recursive: true); } catch (Exception) { /* best-effort cleanup */ }
         }
     }
+
+    // ── Round 2: the script "bypass" heuristic no longer over-fires on bare "hidden" ──
+
+    [Fact]
+    public void ScriptBypass_BareHiddenWord_InJs_DoesNotFire()
+    {
+        var r = ScriptAnalyzer.AnalyzeText(
+            "const panel = { hidden: true }; // toggle hidden state", ".js", benignContainer: false);
+        Assert.DoesNotContain(r.Evidence, e => e.Description.Contains("bypass de política"));
+    }
+
+    [Fact]
+    public void ScriptBypass_RealHiddenWindowFlag_StillFires()
+    {
+        var r = ScriptAnalyzer.AnalyzeText(
+            "powershell -windowstyle hidden -nop -c iex(x)", ".ps1", benignContainer: false);
+        Assert.Contains(r.Evidence, e => e.Description.Contains("bypass de política"));
+    }
 }

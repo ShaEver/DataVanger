@@ -211,6 +211,24 @@ public class Beta11AcceptanceCorpusTests
         Xunit.Assert.Contains(ev, e => e.Description.Contains("Timestamp") && e.ScoreDelta == 0); // demoted
     }
 
+    [Xunit.Fact] // BETA 11G: signed installer (embedded PE in resource + strong correlation, NO hard anomaly) -> not HighRisk
+    public void SignedInstaller_EmbeddedPayloadAndCorrelation_NoHardAnomaly_NotHighRisk()
+    {
+        var ev = new List<Evidence>
+        {
+            Ev("PE", Forte, 4, EvidenceStrength.High),
+            Ev("PE", PayloadMz, 4, EvidenceStrength.High),
+            Ev("PE", Injection, 4, EvidenceStrength.High),
+            Ev("PE", Dynamic, 2, EvidenceStrength.Medium),
+        };
+        var r = Compose(ev, isSigned: true, publisher: "CN=Contoso Ltd", source: SignatureSource.Embedded,
+            systemKind: SystemPathKind.None, path: @"C:\Users\sonic\AppData\Local\SomeApp\installer.exe");
+
+        Xunit.Assert.Equal(PublisherTrustLevel.Valid, r.TrustLevel);
+        Xunit.Assert.NotEqual(ThreatClass.HighRisk, r.Tier);
+        Xunit.Assert.NotEqual(ThreatClass.ConfirmedMalware, r.Tier);
+    }
+
     // ===================== FALSE-NEGATIVE PREVENTION (anti-FN controls) =====================
 
     [Xunit.Fact] // 11C+11E: trusted relief must NOT erase severe PE evidence

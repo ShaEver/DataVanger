@@ -116,7 +116,9 @@ public static class ScriptAnalyzer
         bool longBase64 = Regex.IsMatch(lower, @"[a-z0-9+/]{240,}={0,2}", RegexOptions.IgnoreCase);
         bool dynamicExec = Regex.IsMatch(lower, @"\biex\s*(\(|\s)|invoke-expression|downloadstring|invoke-webrequest|new-object\s+net\.webclient|start-bitstransfer|curl\s+https?://|wget\s+https?://", RegexOptions.IgnoreCase);
         bool downloadPayload = Regex.IsMatch(lower, @"(http|https)://[^\s'""]{8,}.*(start-process|cmd\s*/c|powershell|wscript|rundll32|regsvr32)|urlmon|urldownloadtofile", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        bool bypass = Regex.IsMatch(lower, @"executionpolicy\s+bypass|-ep\s+bypass|-nop\b|-w\s+hidden|windowstyle\s+hidden|hidden", RegexOptions.IgnoreCase);
+        // Require real flag syntax — the bare word "hidden" over-fired on benign .js
+        // (log/UI/config strings). "-w hidden" / "windowstyle hidden" still match.
+        bool bypass = Regex.IsMatch(lower, @"executionpolicy\s+bypass|-ep\s+bypass|-nop\b|-w\s+hidden|windowstyle\s+hidden", RegexOptions.IgnoreCase);
         bool persistence = Regex.IsMatch(lower, @"currentversion\\run|register-scheduledtask|schtasks(\.exe)?\s+/create|startup\\programs\\startup|__eventfilter|filtertoconsumerbinding", RegexOptions.IgnoreCase);
         bool disablesSecurity = Regex.IsMatch(lower, @"set-mppreference|disableantispyware|disablebehaviormonitoring|realtimeprotection|windefend|securityhealthservice", RegexOptions.IgnoreCase);
         bool writesBinary = Regex.IsMatch(lower, @"writeallbytes|adodb\.stream|certutil(\.exe)?[^\r\n]+-decode|frombase64string[^\r\n]+set-content", RegexOptions.IgnoreCase);
@@ -127,7 +129,7 @@ public static class ScriptAnalyzer
         if (longBase64 && (encoded || dynamicExec || lolbas || persistence)) result.Add("Script", "Base64 longo combinado com execução/persistência", 2, EvidenceStrength.Medium);
         if (dynamicExec) result.Add("Script", "Execução dinâmica ou download em script", javascriptLike ? 2 : 4, EvidenceStrength.Medium);
         if (downloadPayload) result.Add("Script", "Padrão download-and-execute", 4, EvidenceStrength.High);
-        if (bypass) result.Add("Script", "Execução oculta ou bypass de política", 3, EvidenceStrength.Medium);
+        if (bypass) result.Add("Script", "Execução oculta ou bypass de política", javascriptLike ? 1 : 3, EvidenceStrength.Medium);
         if (persistence) result.Add("Persistence", "Script tenta criar persistência", 4, EvidenceStrength.Medium);
         if (disablesSecurity) result.Add("Script", "Script tenta alterar ou desativar proteção de segurança", 5, EvidenceStrength.High);
         if (writesBinary) result.Add("Script", "Script grava binário ou payload decodificado em disco", 4, EvidenceStrength.Medium);

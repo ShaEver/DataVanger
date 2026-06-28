@@ -108,6 +108,13 @@ Source: `DataVanger/Core/ThreatClassificationPolicy.cs` (`Classify`,
   events, IPC events, service failures, update failures, quarantine restore failures.
 - **Blacklist precedence over whitelist** and "trusted publisher never overrides a
   known-malicious hash" are preserved.
+- **Signed-installer relief (round 2):** for a file with a valid Authenticode signature
+  (`Valid`/`Trusted`) and **no hard anomaly** (RWX/packer/entry-point/exec-entropy), the
+  FP-prone signals "embedded MZ payload in resource" + "strong PE correlation" are demoted
+  so signature relief can apply (`PeImportRecalibration`). A hard anomaly, or an UNSIGNED
+  file, keeps them fully actionable — preserving anti-FN. Reporting fix: `metrics.YaraRulesLoaded`
+  now reflects the active engine's `RuleCount`, not the lightweight fallback (was 0 while
+  `YaraScanned`>0).
 
 ## Needs-audit gaps (do not guess — confirm in code/Windows)
 

@@ -23,6 +23,7 @@ public class PeRecalibrationTests
     private const string Forte = "Correlação PE forte: múltiplos indicadores estáticos de loader/injeção/empacotamento";
     private const string Moderada = "Correlação PE moderada: indicadores estáticos combinados";
     private const string Timestamp = "Timestamp de compilação anômalo: 2097-04-23";
+    private const string Mz = "Recurso contém payload com cabeçalho MZ";
 
     // ── Low-trust cap: imports alone cannot reach HighRisk ──
 
@@ -192,6 +193,70 @@ public class PeRecalibrationTests
     public void EmptyEvidence_IsSafe()
     {
         Xunit.Assert.Equal(0, PeImportRecalibration.Apply(new List<Evidence>(), PublisherTrustLevel.Unsigned, SystemPathKind.None));
+    }
+
+    // ── Signed installer/bundler relief: embedded MZ payload + strong correlation ──
+    // (the dominant driver of signed false positives — installers/launchers embed a PE
+    //  in a resource). Relieved for SIGNED files ONLY when no hard anomaly is present.
+
+    [Xunit.Fact]
+    public void SignedValidInstaller_MzPayloadAndForte_NoHardAnomaly_IsRelieved_NotActionable()
+    {
+        var ev = new List<Evidence>
+        {
+            Pe(Forte, 4, EvidenceStrength.High),
+            Pe(Mz, 4, EvidenceStrength.High),
+            Pe(Injection, 4, EvidenceStrength.High),
+            Pe(Dynamic, 2),
+        };
+        int reduction = PeImportRecalibration.Apply(ev, PublisherTrustLevel.Valid, SystemPathKind.None);
+
+        Xunit.Assert.True(reduction >= 8, $"MZ payload + strong correlation must be demoted for signed installers; got {reduction}.");
+        Xunit.Assert.Contains(ev, e => e.Description.Contains("cabeçalho MZ") && e.ScoreDelta == 0);
+        Xunit.Assert.Contains(ev, e => e.Description.Contains("Correlação PE forte") && e.ScoreDelta == 0);
+        Xunit.Assert.False(ScanEngine.HasActionableEvidenceAfterTrustRecalibration(ev),
+            "With MZ/forte demoted and no hard anomaly, a signed installer is not actionable.");
+    }
+
+    [Xunit.Fact]
+    public void SignedTrustedInstaller_MzPayloadAndForte_ReliefZerosScore()
+    {
+        var ev = new List<Evidence> { Pe(Forte, 4, EvidenceStrength.High), Pe(Mz, 4, EvidenceStrength.High) };
+        int score = ev.Sum(e => e.ScoreDelta);
+        int reduction = PeImportRecalibration.Apply(ev, PublisherTrustLevel.Trusted, SystemPathKind.None);
+        bool actionable = ScanEngine.HasActionableEvidenceAfterTrustRecalibration(ev);
+        score = ScanEngine.ApplySignedPublisherRelief(score - reduction, trustedPublisher: true, hasActionableEvidence: actionable);
+
+        Xunit.Assert.False(actionable);
+        Xunit.Assert.Equal(0, score);
+    }
+
+    [Xunit.Fact] // anti-FN: UNSIGNED files keep MZ-payload / strong-correlation actionable
+    public void Unsigned_MzPayloadAndForte_StaysActionable_NotRelieved()
+    {
+        var ev = new List<Evidence> { Pe(Forte, 4, EvidenceStrength.High), Pe(Mz, 4, EvidenceStrength.High) };
+        int reduction = PeImportRecalibration.Apply(ev, PublisherTrustLevel.Unsigned, SystemPathKind.None);
+
+        Xunit.Assert.Equal(0, reduction);
+        Xunit.Assert.Contains(ev, e => e.Description.Contains("cabeçalho MZ") && e.ScoreDelta == 4);
+        Xunit.Assert.True(ScanEngine.HasActionableEvidenceAfterTrustRecalibration(ev),
+            "Unsigned files keep embedded-MZ-payload / strong-correlation as actionable.");
+    }
+
+    [Xunit.Fact] // anti-FN: a hard anomaly (RWX) on a SIGNED file blocks the installer relief
+    public void SignedValid_WithHardAnomaly_DoesNotRelieveMzOrForte()
+    {
+        var ev = new List<Evidence>
+        {
+            Pe(Rwx, 4, EvidenceStrength.High),
+            Pe(Mz, 4, EvidenceStrength.High),
+            Pe(Forte, 4, EvidenceStrength.High),
+        };
+        PeImportRecalibration.Apply(ev, PublisherTrustLevel.Valid, SystemPathKind.None);
+
+        Xunit.Assert.Contains(ev, e => e.Description.Contains("cabeçalho MZ") && e.ScoreDelta == 4);
+        Xunit.Assert.Contains(ev, e => e.Description.StartsWith("Correlação PE forte") && e.ScoreDelta == 4);
+        Xunit.Assert.True(ScanEngine.HasActionableEvidenceAfterTrustRecalibration(ev));
     }
 
     // ── Correlation tightening: "forte" requires a structural signal ──

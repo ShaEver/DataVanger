@@ -41,7 +41,11 @@ public static class PeMetadataAnalyzer
             var info = FileVersionInfo.GetVersionInfo(path);
             bool claimsMicrosoft = Contains(info.CompanyName, "Microsoft") || Contains(info.ProductName, "Microsoft") || Contains(info.FileDescription, "Microsoft");
             bool normalMicrosoftPath = path.Contains("\\Windows\\", StringComparison.OrdinalIgnoreCase) || path.Contains("\\Program Files\\", StringComparison.OrdinalIgnoreCase);
-            if (claimsMicrosoft && !normalMicrosoftPath)
+            // Legit Microsoft tooling (Build Tools, NuGet packages, VS Code bits) lives under
+            // dev/Electron containers and vendor dirs — don't treat that as masquerading.
+            string pathLower = path.ToLowerInvariant();
+            bool benign = PathTaxonomy.IsKnownBenignScriptContainer(pathLower) || PathTaxonomy.IsTrustedPath(pathLower);
+            if (claimsMicrosoft && !normalMicrosoftPath && !benign)
                 result.Add("Metadados alegam Microsoft fora de caminho comum do sistema", 1, EvidenceStrength.Low);
 
             if (string.IsNullOrWhiteSpace(info.CompanyName) && string.IsNullOrWhiteSpace(info.FileDescription) && string.IsNullOrWhiteSpace(info.ProductName))

@@ -37,7 +37,14 @@ internal static class PeImportRecalibration
 
         bool strong = trustLevel is PublisherTrustLevel.Trusted or PublisherTrustLevel.TrustedWindowsComponent
                       || systemKind != SystemPathKind.None;
+        // A valid Authenticode signature (even from an untrusted publisher) makes the file
+        // accountable; combined with NO hard anomaly it is treated as a signed installer.
+        bool signed = strong || trustLevel == PublisherTrustLevel.Valid;
         bool hasSevere = evidence.Any(IsSevereStructuralEvidence);
+        // Hard anomalies (RWX/packer/entry-point/exec-entropy/exec-without-raw) are NEVER
+        // relieved and gate the signed-structural relief: if any is present the file stays
+        // fully actionable regardless of signature (anti-false-negative).
+        bool hasHardSevere = evidence.Any(e => IsPe(e) && IsHardSevere(e.Description));
 
         int reduction = 0;
         if (strong)
@@ -58,6 +65,24 @@ internal static class PeImportRecalibration
         {
             int importSum = evidence.Where(IsCommonImportEvidence).Sum(e => e.ScoreDelta);
             if (importSum > WeakImportCap) reduction = importSum - WeakImportCap;
+        }
+
+        // Signed installer/bundler relief: an embedded MZ payload in a resource (and the
+        // strong correlation derived from it) is extremely common in legitimately signed
+        // installers/launchers. For SIGNED files with NO hard anomaly, demote those two
+        // signals so the signature relief can apply. Unsigned/invalid files, and any file
+        // that ALSO has a hard anomaly, are untouched.
+        if (signed && !hasHardSevere)
+        {
+            foreach (var e in evidence)
+            {
+                if (!IsPe(e) || e.ScoreDelta <= 0) continue;
+                if (!IsSignedRelievableStructural(e.Description)) continue;
+                reduction += e.ScoreDelta;
+                e.ScoreDelta = 0;
+                e.Strength = EvidenceStrength.Info;
+                e.Description = "[instalador assinado] " + e.Description;
+            }
         }
 
         if (reduction > 0)
@@ -95,14 +120,26 @@ internal static class PeImportRecalibration
     private static bool IsTimestampAnomaly(string d) =>
         d.StartsWith("Timestamp de compilação anômalo", StringComparison.OrdinalIgnoreCase);
 
-    // Severe/structural anomalies that are NEVER attenuated and that keep a timestamp anomaly meaningful.
+    // Full severe/structural set. Semantics unchanged: this is what
+    // HasActionableEvidenceAfterTrustRecalibration consults, so for UNSIGNED files the
+    // embedded-MZ-payload and strong-correlation signals remain severe/actionable.
     private static bool IsSevereStructural(string d) =>
+        IsHardSevere(d) || IsSignedRelievableStructural(d);
+
+    // Hard anomalies — never relieved for anyone (signed or not), and they gate the
+    // signed-installer relief above.
+    private static bool IsHardSevere(string d) =>
         d.Contains("(RWX)", StringComparison.OrdinalIgnoreCase)
         || d.Contains("packer", StringComparison.OrdinalIgnoreCase)
         || d.StartsWith("Entry point fora", StringComparison.OrdinalIgnoreCase)
-        || d.StartsWith("Correlação PE forte", StringComparison.OrdinalIgnoreCase)
-        || d.Contains("payload com cabeçalho MZ", StringComparison.OrdinalIgnoreCase)
-        || d.Contains("payload PE embutido", StringComparison.OrdinalIgnoreCase)
         || d.StartsWith("Alta entropia em seção executável", StringComparison.OrdinalIgnoreCase)
         || d.StartsWith("Seção executável sem dados brutos", StringComparison.OrdinalIgnoreCase);
+
+    // Structural signals common in signed installers/bundlers (an embedded PE in a
+    // resource, and the strong correlation derived from it). Relieved for SIGNED files
+    // ONLY when no hard anomaly is present; always severe for unsigned files.
+    private static bool IsSignedRelievableStructural(string d) =>
+        d.StartsWith("Correlação PE forte", StringComparison.OrdinalIgnoreCase)
+        || d.Contains("payload com cabeçalho MZ", StringComparison.OrdinalIgnoreCase)
+        || d.Contains("payload PE embutido", StringComparison.OrdinalIgnoreCase);
 }

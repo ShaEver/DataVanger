@@ -170,12 +170,14 @@ public class ScanEngine : IScanEngine
         var yaraDb = _settings.EnableYaraRules ? LightweightYaraDatabase.Load(SignatureRoot) : new LightweightYaraDatabase();
         var metrics = new ScanMetrics();
         metrics.SignatureHashesLoaded = _signatures.TotalHashes;
-        metrics.YaraRulesLoaded = yaraDb.Count;
 
         // --- 2. Build service graph ------------------------------------------
         var logger = new DelegateScanLogger(log);
         var hashService = new Sha256HashService(HashCachePath);
         var deps = EngineComposition.BuildDefault(hashService, _signatures, yaraDb, _settings, logger, YaraRulesRoot);
+        // Report the rule count of the ACTIVE engine (real libyara when available),
+        // not the lightweight fallback db — otherwise this reads 0 while YaraScanned>0.
+        metrics.YaraRulesLoaded = deps.Yara.RuleCount;
         var pipeline = new DetectionPipeline(deps.Modules, deps.Classifier, logger);
         var reputation = new LocalReputationDatabase(ReputationPath);
         var reputationEngine = new ReputationEngine(_signatures, _settings);
@@ -263,7 +265,7 @@ public class ScanEngine : IScanEngine
         metrics.Targets = targets.Count;
         log($"[Scan] {targets.Count} pastas alvo. Perfil: {options.Profile}");
         if (deep) log("[Scan] Perfil Deep ativo: análise abrangente; pode demorar e consumir CPU/disco.");
-        log($"[Scan] Assinaturas carregadas: {metrics.SignatureHashesLoaded} hash(es), {metrics.YaraRulesLoaded} regra(s) YARA leve(s).");
+        log($"[Scan] Assinaturas carregadas: {metrics.SignatureHashesLoaded} hash(es), {metrics.YaraRulesLoaded} regra(s) YARA.");
 
         // --- 5. Index eligible files ----------------------------------------
         log("[Scan] Indexando arquivos elegíveis para progresso real...");
@@ -1255,7 +1257,7 @@ public class ScanEngine : IScanEngine
             sb.AppendLine($"Tempo de scan                      : {m.ScanTime.TotalSeconds:F2}s");
             sb.AppendLine($"Velocidade média                   : {m.FilesPerSecond:F2} arquivos/segundo");
             sb.AppendLine($"Hashes de assinatura carregados    : {m.SignatureHashesLoaded}");
-            sb.AppendLine($"Regras YARA leves carregadas       : {m.YaraRulesLoaded}");
+            sb.AppendLine($"Regras YARA carregadas             : {m.YaraRulesLoaded}");
             sb.AppendLine($"Arquivos checados por YARA         : {m.YaraScanned}");
             sb.AppendLine($"Hits de YARA                       : {m.YaraHits}");
             sb.AppendLine($"Arquivos compactados checados      : {m.ArchiveChecked}");
