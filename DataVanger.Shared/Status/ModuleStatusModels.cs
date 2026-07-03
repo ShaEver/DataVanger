@@ -173,12 +173,21 @@ public sealed record ProductHealthViewModel(
 /// so the UI and operators never over-trust prepared/stub/fallback systems.
 ///
 /// This is descriptive only: producing the matrix performs NO I/O, starts no modules,
-/// writes no settings, and triggers no scans/services/updates. Uncertainty
-/// Any remaining uncertainty is expressed in the Detail text, not by
-/// over-claiming Active. The real-libyara entry is derived from the YARA_REAL compile
-/// symbol; the rest reflect verified code facts (e.g. HttpUpdateTransport throws;
-/// service/ETW activation is opt-in; scan-path ETW/AMSI adapters remain distinct
-/// from resident runtime telemetry).
+/// writes no settings, and triggers no scans/services/updates. Any remaining uncertainty
+/// is expressed in the Detail text, not by over-claiming Active.
+///
+/// SOURCE-OF-TRUTH CAVEAT: this list lives in DataVanger.Shared (the base layer), which
+/// references nothing and therefore cannot observe the facts it describes — compile symbols
+/// (YARA_REAL) and concrete engine types all live in higher layers. Each entry is thus a
+/// hand-maintained claim, which is exactly how it once drifted from reality (the
+/// HttpUpdateTransport entry falsely claimed "throws NotSupportedException" long after the
+/// transport was implemented and wired). To make that class of drift break the build instead
+/// of shipping, the load-bearing claims are pinned by regression tests in DataVanger.Tests
+/// that assert the state HERE against a verifiable code fact — e.g.
+/// <c>LibyaraEngine.RealBackendCompiledIn</c> for real-libyara, and constructing the real
+/// non-throwing opt-in <c>HttpUpdateTransport</c> for http-update-transport. The .md mirror
+/// (docs/MODULE_STATUS_MATRIX.md) is reconciled to this model; longer term it should be
+/// generated from it (see the reconciliation note in that file).
 /// </summary>
 public static class CodeRealityModuleMatrix
 {
@@ -195,7 +204,7 @@ public static class CodeRealityModuleMatrix
             new("pe-section-entropy", "PE section entropy", ModuleOperatingState.Active,
                 "Per-section Shannon entropy; descriptive-only (Score 0, never confirms malware)."),
             new("yara-lightweight", "YARA detection (lightweight engine)", ModuleOperatingState.Fallback,
-                "Active LightweightYaraDatabase via YaraEngineAdapter — the guaranteed fallback used because the real libyara backend is not active. Curated confirmed-rule semantics preserved."),
+                "LightweightYaraDatabase via YaraEngineAdapter — the always-valid, guaranteed fallback used whenever the real libyara backend is unavailable (not compiled, native lib absent, or zero rules compiled). Curated confirmed-rule semantics preserved."),
             new("real-libyara", "Real libyara backend", ModuleOperatingState.Active,
                 "DataVanger.csproj enables YARA_REAL with pinned dnYara/native x64 assets; Windows real-path tests pass. The lightweight backend remains the guaranteed fallback for native/rule unavailability, and external matches never confirm malware."),
             new("trusted-publishers", "Trusted publishers", ModuleOperatingState.Active,
@@ -209,9 +218,9 @@ public static class CodeRealityModuleMatrix
             new("realtime-protection", "Real-time protection", ModuleOperatingState.Prepared,
                 "Conservative decision engine is implemented & tested (authorizes auto-action only for ConfirmedMalware); the resident runtime is hosted by the Windows service (now implemented; opt-in install) and is not active by default."),
             new("signed-update-verification", "Signed update verification", ModuleOperatingState.Active,
-                "RSA-PSS / ECDsa manifest verification + anti-downgrade implemented & tested. Verification only — not network delivery."),
-            new("http-update-transport", "HTTP update transport", ModuleOperatingState.Stub,
-                "HttpUpdateTransport throws NotSupportedException; no network update transport is active."),
+                "RSA-PSS / ECDsa manifest verification + package hash/size validation + anti-downgrade, implemented & tested. This is the verification stage only; network delivery is the separate opt-in http-update-transport entry."),
+            new("http-update-transport", "HTTP update transport", ModuleOperatingState.Prepared,
+                "Complete bounded, fail-closed HTTPS transport (HTTPS-only, redirects rejected, size/time caps): DataVanger.Engine/Updates/SignedUpdates/HttpUpdateTransport.cs. Wired end-to-end via DataVanger/Core/SignedFeedUpdateRunner.cs and invoked from the UI (MainWindow/App). Opt-in and inert by default: fetches nothing unless EnableHttpSignedUpdates + a feed URL + a pinned public key are configured, so it is not active by default."),
             new("windows-service", "Windows service mode", ModuleOperatingState.Prepared,
                 "Implemented: --install/--uninstall (admin-gated sc.exe with restart-on-failure recovery) and a --service host (AddWindowsService maps SCM start/stop to the runtime). Opt-in and admin-gated; never auto-starts, so it is not active by default."),
             new("named-pipe-ipc", "Named-pipe IPC (local)", ModuleOperatingState.Active,

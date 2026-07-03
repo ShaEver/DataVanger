@@ -39,6 +39,20 @@ public sealed class LibyaraEngine : IYaraEngine, IDisposable
     private const int MaxExposedTextLength = 100;
 
     /// <summary>
+    /// True when the real libyara backend is compiled in (the <c>YARA_REAL</c> symbol is
+    /// defined for this assembly). This is the single verifiable code fact behind the
+    /// <c>real-libyara</c> module-status claim. The status matrix lives in DataVanger.Shared
+    /// (which cannot see this symbol), so a regression test asserts the matrix state matches
+    /// this probe — disabling the symbol without updating the matrix then breaks the build.
+    /// </summary>
+    public static bool RealBackendCompiledIn =>
+#if YARA_REAL
+        true;
+#else
+        false;
+#endif
+
+    /// <summary>
     /// Attempts to build a real-YARA engine from a local rules directory.
     /// Returns <c>null</c> (so callers fall back to the lightweight engine) when
     /// the real backend is not compiled in, the native library cannot load, the

@@ -306,7 +306,7 @@ window.onload = function(){{
     }
 
     private static string Esc(string? s) =>
-        (s ?? "").Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;");
+        (s ?? "").Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;").Replace("\"", "&quot;").Replace("'", "&#39;");
 
     private static string EvidenceHtml(ScanFinding finding)
     {

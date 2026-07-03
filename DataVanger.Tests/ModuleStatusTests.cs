@@ -19,11 +19,16 @@ public class ModuleStatusTests
     private static ModuleStatus Find(string key) =>
         CodeRealityModuleMatrix.Create().Single(m => m.Key == key);
 
-    [Fact]
-    public void CodeReality_RealLibyara_IsActive_WithFallbackStillDocumented()
+    [Fact] // tied to the real compile symbol via LibyaraEngine.RealBackendCompiledIn:
+           // the Shared matrix cannot see YARA_REAL, so this test enforces consistency —
+           // dropping the symbol without updating the matrix breaks the build.
+    public void CodeReality_RealLibyara_State_MatchesCompileSymbol()
     {
         var yara = Find("real-libyara");
-        Assert.Equal(ModuleOperatingState.Active, yara.State);
+        var expected = DataVanger.Infrastructure.LibyaraEngine.RealBackendCompiledIn
+            ? ModuleOperatingState.Active
+            : ModuleOperatingState.Fallback;
+        Assert.Equal(expected, yara.State);
         Assert.Contains("fallback", yara.Detail, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -31,9 +36,13 @@ public class ModuleStatusTests
     public void CodeReality_LightweightYara_IsFallback() =>
         Assert.Equal(ModuleOperatingState.Fallback, Find("yara-lightweight").State);
 
-    [Fact]
-    public void CodeReality_HttpUpdateTransport_IsStub() =>
-        Assert.Equal(ModuleOperatingState.Stub, Find("http-update-transport").State);
+    [Fact] // was falsely asserted as Stub; HttpUpdateTransport is a real, opt-in transport.
+    public void CodeReality_HttpUpdateTransport_IsPrepared_NotStub()
+    {
+        var t = Find("http-update-transport");
+        Assert.Equal(ModuleOperatingState.Prepared, t.State);
+        Assert.NotEqual(ModuleOperatingState.Stub, t.State);
+    }
 
     [Fact]
     public void CodeReality_WindowsService_IsPrepared_NotStub()
@@ -83,10 +92,12 @@ public class ModuleStatusTests
         Assert.Equal(ModuleOperatingState.Active, Find("quarantine-v2").State);
 
     [Fact]
-    public void CodeReality_SignedUpdateVerification_IsActive_ButHttpTransportIsNot()
+    public void CodeReality_SignedUpdateVerification_IsActive_TransportIsImplementedOptIn()
     {
+        // Verification is Active; the network transport is implemented but opt-in (Prepared),
+        // NOT absent/Stub — the earlier "transport is not [implemented]" framing was wrong.
         Assert.Equal(ModuleOperatingState.Active, Find("signed-update-verification").State);
-        Assert.NotEqual(ModuleOperatingState.Active, Find("http-update-transport").State);
+        Assert.Equal(ModuleOperatingState.Prepared, Find("http-update-transport").State);
     }
 
     [Fact]

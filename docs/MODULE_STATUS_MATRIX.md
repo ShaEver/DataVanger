@@ -52,8 +52,8 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 
 | Module | Status | Evidence (file) |
 |---|---|---|
-| Signed update verification | **Active** | `DataVanger.Engine/Updates/SignedUpdates/SignedUpdateService.cs`, `SignedManifestVerifier.cs`, `UpdatePackageVerifier.cs` (RSA-PSS / ECDsa, anti-downgrade, pinned keys; file/in-memory transports work; telemetry-only, never a verdict) |
-| HTTP update transport | **Stub** | `DataVanger.Engine/Updates/SignedUpdates/HttpUpdateTransport.cs` — every method throws `NotSupportedException("HTTP transport is not implemented in this phase.")`. `DataVanger.Engine/Status/ModuleStatusAggregator.cs` reports signed updates as not configured. |
+| Signed update verification | **Active** | `DataVanger.Engine/Updates/SignedUpdates/SignedUpdateService.cs`, `SignedManifestVerifier.cs`, `UpdatePackageVerifier.cs` (RSA-PSS / ECDsa, anti-downgrade, pinned keys; file/in-memory/HTTP transports all work; verification stage only, never a verdict) |
+| HTTP update transport | **Prepared (implemented; opt-in)** | `DataVanger.Engine/Updates/SignedUpdates/HttpUpdateTransport.cs` is a complete bounded, fail-closed HTTPS transport (HTTPS-only, redirects rejected, size/time caps). Wired end-to-end via `DataVanger/Core/SignedFeedUpdateRunner.cs` and invoked from `MainWindow.xaml.cs` / `App.xaml.cs`. Inert by default — fetches nothing unless `EnableHttpSignedUpdates` + a feed URL + a pinned public key are configured. **(Earlier "Stub / throws NotSupportedException" entry was false — it never throws; corrected 2026-06-28.)** |
 
 ## Service & IPC
 
@@ -75,9 +75,9 @@ Where code and intent disagree, the entry is marked **Needs audit** rather than 
 
 | Module | Status | Evidence (file) |
 |---|---|---|
-| Module status UI | **Needs audit** | Data source exists: `DataVanger.Engine/Status/ModuleStatusAggregator.cs` + `DataVanger.Shared/Status/ModuleStatusModels.cs`. A dedicated UI surfacing the Active/Prepared/Stub taxonomy is a future phase; current UI exposure is unverified. |
+| Module status UI | **Active** | `DataVanger/ModuleStatusWindow.xaml(.cs)` renders `CodeRealityModuleMatrix.Create()` as read-only text (no writes, no activation) and is opened from `MainWindow.xaml.cs`. (Earlier "Needs audit — UI exposure unverified" was stale.) |
 | Settings UI | **Active** | `DataVanger/SettingsWindow.xaml(.cs)` exposes 28/29 `AppSettings` properties; `TrustedPublishers` base list intentionally not UI-exposed (users edit `ExtraTrustedPublishers`). |
-| Reporting / forensics | **Active** | `DataVanger/Core/ReportGenerator.cs`, `DataVanger/Reporting/ReportService.cs` (CSV/TXT/HTML/JSON). *Needs audit (light): CSV quoting/injection not re-verified this round.* |
+| Reporting / forensics | **Active** | `DataVanger/Core/ReportGenerator.cs`, `DataVanger/Reporting/ReportService.cs` (CSV/TXT/HTML/JSON). Injection re-verified 2026-06-28: CSV routes every attacker-influenceable field through `CsvSafe` (neutralizes `= + - @ \t \r`, then RFC 4180 quoting — `CsvSafeTests`); JSON via `System.Text.Json` (HTML-sensitive chars escaped); HTML entity-escapes all fields and places them only in text / double-quoted attributes. |
 
 ## Tests
 
@@ -121,10 +121,18 @@ Source: `DataVanger/Core/ThreatClassificationPolicy.cs` (`Classify`,
 1. **Memory/AMSI resident wiring** — resolved. Shared code is in
    `DataVanger.Infrastructure`; the service has no WPF reference; memory is a
    bounded default-OFF startup pass; AMSI is explicit-submission observation.
-2. **Module status UI** — confirm whether any UI view surfaces
-   `ModuleStatusAggregator`'s Active/Prepared/Stub taxonomy (future phase 18).
-3. **Reporting CSV** — re-verify CSV quoting / CSV-injection handling in
-   `ReportGenerator` / `ReportService`.
-4. **Git provenance** — this validation workspace is an exported source tree without
+2. **Module status UI** — resolved. `DataVanger/ModuleStatusWindow.xaml(.cs)` renders
+   `CodeRealityModuleMatrix.Create()` read-only and is opened from `MainWindow`.
+3. **Reporting CSV/HTML/JSON injection** — resolved (2026-06-28). See the Reporting row
+   above; adversarial CSV cases are covered by `CsvSafeTests`.
+4. **Status-matrix source-of-truth (root cause of the HttpUpdateTransport drift)** — the C#
+   `CodeRealityModuleMatrix` (in `DataVanger.Shared`) and this `.md` are maintained by hand and
+   independently; the Shared layer references nothing, so it cannot observe the facts it
+   describes. The C# model is now the single source of truth and its load-bearing claims are
+   pinned to verifiable code facts by `DataVanger.Tests/ModuleStatusClaimTests.cs` (a stale
+   claim breaks the build). **Recommendation:** generate this `.md` table from
+   `CodeRealityModuleMatrix.Create()` (emit Key/State/Detail + a test that fails when the
+   checked-in table is stale) so code and docs can never diverge again.
+5. **Git provenance** — this validation workspace is an exported source tree without
    `.git`, and `gh` is unavailable, so branches/commits/pushes/PRs could not be
    produced here. Build/test gates were run from the folder containing `DataVanger.sln`.

@@ -69,6 +69,25 @@ public class CsvSafeTests
         Assert.Equal("\"'=A1,B1\"", CsvSafe.Field("=A1,B1"));
     }
 
+    [Theory] // tab/CR BEFORE a formula are themselves formula leaders -> apostrophe-prefixed
+    [InlineData("\t=SUM(A1:A9)")]
+    [InlineData("\r=SUM(A1:A9)")]
+    public void Field_TabOrCr_BeforeFormula_IsNeutralized(string input)
+    {
+        Assert.StartsWith("'", CsvSafe.NeutralizeFormula(input)); // rendered as literal text
+        Assert.Contains("'", CsvSafe.Field(input));               // survives the RFC 4180 quoting
+    }
+
+    [Fact] // LF-first is NOT a spreadsheet formula leader (a cell not starting at char 0 with a
+           // trigger is never evaluated); it is RFC 4180-quoted so it cannot break CSV structure.
+    public void Field_LfBeforeFormula_IsQuoted_NotAFormulaLeader()
+    {
+        Assert.Equal("\n=SUM(A1:A9)", CsvSafe.NeutralizeFormula("\n=SUM(A1:A9)")); // no apostrophe
+        var result = CsvSafe.Field("\n=SUM(A1:A9)");
+        Assert.StartsWith("\"", result);
+        Assert.EndsWith("\"", result);
+    }
+
     [Fact]
     public void Field_NullOrEmpty_ReturnsEmpty()
     {
