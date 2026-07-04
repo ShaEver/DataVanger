@@ -127,6 +127,77 @@ public static class IpcPipeSecurity
     }
 
     /// <summary>
+    /// Least-privilege DACL for the AMSI ingest pipe. Unlike the control pipe
+    /// (Admin/SYSTEM only), the ingest endpoint must accept connections from the
+    /// native AMSI provider running inside third-party processes of ANY local
+    /// user, so it grants Authenticated Users connect+write ONLY:
+    ///   - <see cref="PipeAccessRights.Write"/> | <see cref="PipeAccessRights.Synchronize"/>
+    ///     lets a caller connect and push one telemetry frame;
+    ///   - it deliberately withholds <see cref="PipeAccessRights.ReadData"/> (a
+    ///     caller can never read another process's telemetry) and
+    ///     <see cref="PipeAccessRights.CreateNewInstance"/> (a low-privilege
+    ///     caller can never stand up a rogue server instance to squat the name).
+    /// Network logons are denied; only the creating service and Local System get
+    /// full control (to create instances and read the frames).
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    public static PipeSecurity BuildIngestAcl()
+    {
+        var security = new PipeSecurity();
+
+        // Deny network logons first (evaluated before allows). A local pipe
+        // client is never a network logon.
+        var networkSid = new SecurityIdentifier(WellKnownSidType.NetworkSid, null);
+        security.AddAccessRule(new PipeAccessRule(
+            networkSid, PipeAccessRights.FullControl, AccessControlType.Deny));
+
+        // The creating service principal: full control to create instances/read.
+        var currentUser = WindowsIdentity.GetCurrent().User;
+        if (currentUser is not null)
+        {
+            security.AddAccessRule(new PipeAccessRule(
+                currentUser, PipeAccessRights.FullControl, AccessControlType.Allow));
+        }
+
+        // Local System — the expected privileged service identity.
+        var localSystem = new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null);
+        security.AddAccessRule(new PipeAccessRule(
+            localSystem, PipeAccessRights.FullControl, AccessControlType.Allow));
+
+        // Authenticated Users: connect + write ONLY. No read, no instance creation.
+        var authenticatedUsers = new SecurityIdentifier(WellKnownSidType.AuthenticatedUserSid, null);
+        security.AddAccessRule(new PipeAccessRule(
+            authenticatedUsers,
+            PipeAccessRights.Write | PipeAccessRights.Synchronize,
+            AccessControlType.Allow));
+
+        return security;
+    }
+
+    /// <summary>
+    /// Creates the write-only AMSI ingest server stream protected by
+    /// <see cref="BuildIngestAcl"/>. Direction is <see cref="PipeDirection.In"/>
+    /// (the server only reads frames the client writes) and transmission is byte
+    /// mode, matching the fixed-layout <c>AmsiIngestProtocol</c> framing.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    public static NamedPipeServerStream CreateIngestServerStream(string pipeName, int maxServerInstances = 2)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(pipeName);
+
+        var security = BuildIngestAcl();
+        return NamedPipeServerStreamAcl.Create(
+            pipeName,
+            PipeDirection.In,
+            maxNumberOfServerInstances: Math.Clamp(maxServerInstances, 1, 8),
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous,
+            inBufferSize: 0,
+            outBufferSize: 0,
+            pipeSecurity: security);
+    }
+
+    /// <summary>
     /// Resolves a principal expressed as an SDDL SID string ("S-1-5-...") or a
     /// local account name to a <see cref="SecurityIdentifier"/>. Returns false on
     /// any malformed/unresolvable input so the caller can skip it without

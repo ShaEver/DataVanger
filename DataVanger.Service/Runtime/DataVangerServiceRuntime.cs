@@ -74,6 +74,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
     private AmsiRuntimeBridge? _amsiBridge;
     private RuntimeProviderState _amsiState = RuntimeProviderState.NotStarted;
     private string? _amsiLastError;
+    private string? _amsiProviderName;
 
     // Behavioral runtime correlation (opt-in). Bound to the SAME runtime-event
     // pipeline the ETW provider publishes into, so real process telemetry is
@@ -105,8 +106,12 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         _etwPlatformProbe = etwPlatformProbe;
         _memoryScanner = memoryScanner ?? MemoryScannerFactory.CreateSafeDefault(AddWarning);
         _memoryScannerOptions = CreateBoundedMemoryOptions(memoryScannerOptions);
-        _amsiProviderFactory = amsiProviderFactory
-            ?? (() => AmsiProviderFactory.Create(AmsiProviderMode.Auto));
+        // A single AMSI provider is ever created here, so the real ingest
+        // provider and the in-memory provider are mutually exclusive and events
+        // are never duplicated. The real provider is selected ONLY when it is
+        // opted in AND the runtime is a genuine Windows service; it degrades to
+        // the in-memory analyzer everywhere else.
+        _amsiProviderFactory = amsiProviderFactory ?? CreateConfiguredAmsiProvider;
         if (configWarnings is { Count: > 0 })
         {
             _warnings.AddRange(configWarnings);
@@ -194,6 +199,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
         string? etwLastError = null;
         var amsiState = RuntimeProviderState.NotStarted;
         string? amsiLastError = null;
+        string? amsiProviderName = null;
         MemoryScanResult? memoryResult = null;
         string? memoryLastError = null;
         bool memoryPassAttempted = false;
@@ -274,6 +280,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             try
             {
                 amsiProvider = _amsiProviderFactory();
+                amsiProviderName = amsiProvider.Name;
                 amsiBridge = new AmsiRuntimeBridge(amsiProvider, pipeline, AddWarning);
                 amsiState = amsiProvider.Start();
                 if (amsiState is not (RuntimeProviderState.Running or RuntimeProviderState.RunningMock))
@@ -333,6 +340,7 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
                     _amsiBridge = amsiBridge;
                     _amsiState = amsiState;
                     _amsiLastError = amsiLastError;
+                    _amsiProviderName = amsiProviderName;
                     _memoryBridge = memoryBridge;
                     _memoryScanResult = memoryResult;
                     _memoryPassAttempted = memoryPassAttempted;
@@ -670,17 +678,23 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
 
     private DataVangerRuntimeModuleStatus BuildAmsiRuntimeModule()
     {
+        bool realIngest = string.Equals(_amsiProviderName, "pipe-ingest-amsi", StringComparison.Ordinal);
+        string runningDetail = realIngest
+            ? "Real AMSI provider ingest listener active (Windows): the native amsi.dll shim always returns CLEAN and only forwards a bounded content prefix; passive, bounded, rate-limited, never blocks scripts and never confirms malware."
+            : "In-memory AMSI content observation is ready for explicit submissions; passive, bounded, never blocks scripts and never confirms malware.";
+        string degradedNoun = realIngest ? "Real AMSI provider ingest" : "In-memory AMSI observation";
+
         return _amsiState is RuntimeProviderState.Running or RuntimeProviderState.RunningMock
             ? new DataVangerRuntimeModuleStatus(
                 "AmsiRuntime",
                 RuntimeModuleAvailability.Passive,
-                "In-memory AMSI content observation is ready for explicit submissions; passive, bounded, never blocks scripts and never confirms malware.")
+                runningDetail)
             : new DataVangerRuntimeModuleStatus(
                 "AmsiRuntime",
                 RuntimeModuleAvailability.Degraded,
                 string.IsNullOrWhiteSpace(_amsiLastError)
-                    ? $"In-memory AMSI observation state is '{_amsiState}'. No active protection."
-                    : $"In-memory AMSI observation degraded ({_amsiLastError}). No active protection.");
+                    ? $"{degradedNoun} state is '{_amsiState}'. No active protection."
+                    : $"{degradedNoun} degraded ({_amsiLastError}). No active protection.");
     }
 
     public void Dispose()
@@ -750,6 +764,20 @@ public sealed class DataVangerServiceRuntime : IDataVangerServiceRuntime
             _lastUpdatedUtc = DateTimeOffset.UtcNow;
         }
     }
+
+    /// <summary>
+    /// Selects the single AMSI provider for this runtime. The real ingest
+    /// provider is chosen only when explicitly opted in AND the runtime is a
+    /// genuine Windows service (never in Development/Console, never in the WPF
+    /// UI process); otherwise the in-memory analyzer is used. Because exactly
+    /// one provider is created, the two paths never run in parallel and events
+    /// are never duplicated.
+    /// </summary>
+    private IAmsiTelemetryProvider CreateConfiguredAmsiProvider()
+        => AmsiProviderFactory.Create(
+            _configuration.EnableRealAmsiProvider && _mode == DataVangerRuntimeMode.Service
+                ? AmsiProviderMode.RealProvider
+                : AmsiProviderMode.Auto);
 
     private static MemoryScannerOptions CreateBoundedMemoryOptions(MemoryScannerOptions? options)
     {

@@ -46,54 +46,17 @@ public sealed class InMemoryAmsiProvider : IAmsiTelemetryProvider
         if (handler is null) return 0;
 
         int published = 0;
-        var bypassReasons = AmsiBypassDetector.Detect(scriptContent);
-        if (bypassReasons.Count > 0)
+        foreach (var telemetry in AmsiContentEvents.Build(Name, source, scriptContent, pid))
         {
-            published += Publish(handler, RuntimeTelemetryEventKind.AmsiBypassIndicator,
-                source, scriptContent, pid, "amsi-bypass");
-        }
-
-        var content = AmsiContentAnalyzer.Analyze(source, scriptContent);
-        // Surface a generic AmsiScan event when there is at least one
-        // suspicious content tag. Benign scripts produce zero events.
-        bool suspicious =
-            content.HasTag("encoded-payload") ||
-            content.HasTag("reflective-load") ||
-            content.HasTag("base64-invoke") ||
-            content.HasTag("download-cradle") ||
-            content.HasTag("security-tamper") ||
-            content.HasTag("obfuscation") ||
-            content.HasTag("dynamic-execution") ||
-            content.HasTag("long-base64");
-
-        if (suspicious)
-        {
-            string tag = content.HasTag("security-tamper") ? "security-tamper"
-                       : content.HasTag("encoded-payload") ? "encoded"
-                       : content.HasTag("reflective-load") ? "reflective"
-                       : "amsi-suspicious";
-            published += Publish(handler, RuntimeTelemetryEventKind.AmsiScan,
-                source, scriptContent, pid, tag);
+            try
+            {
+                handler(telemetry);
+                published++;
+            }
+            catch (System.Exception) { /* sink callback must never throw back into the provider */ }
         }
 
         return published;
-    }
-
-    private int Publish(Action<RuntimeTelemetryEvent> handler,
-        RuntimeTelemetryEventKind kind, string source, string content, int pid, string tag)
-    {
-        try
-        {
-            handler(new RuntimeTelemetryEvent(
-                kind: kind, providerName: Name,
-                pid: pid, parentPid: 0,
-                processName: source ?? "", imagePath: "",
-                commandLine: "", scriptContent: content,
-                extraTag: tag,
-                timestampUtc: DateTime.UtcNow));
-            return 1;
-        }
-        catch (System.Exception) { return 0; }
     }
 
     public void Dispose()

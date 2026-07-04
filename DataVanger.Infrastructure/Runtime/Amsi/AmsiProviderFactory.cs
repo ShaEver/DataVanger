@@ -5,13 +5,13 @@ namespace DataVanger.Runtime.Amsi;
 /// <summary>
 /// Factory entry point for AMSI providers.
 ///
-/// This build does not link <c>amsi.dll</c> directly — doing so would
-/// add a hard Windows-only native dependency and require admin
-/// elevation to register as an AMSI provider. Instead the factory
-/// returns a content-analysis provider that runs the same heuristics
-/// AMSI would feed us, just driven by explicit <c>SubmitContent</c>
-/// calls from upstream monitors. A future PR can plug a real provider
-/// here without touching the bridge or the behavioral engine.
+/// The managed process never links or patches <c>amsi.dll</c>. The
+/// default (<see cref="AmsiProviderMode.Auto"/>) returns a
+/// content-analysis provider driven by explicit <c>SubmitContent</c>
+/// calls. The opt-in <see cref="AmsiProviderMode.RealProvider"/> hosts
+/// the write-only ingest pipe that receives observations from the
+/// separately-registered native shim (<c>DataVanger.AmsiProvider.dll</c>)
+/// — plugged in here without touching the bridge or the behavioral engine.
 /// </summary>
 public static class AmsiProviderFactory
 {
@@ -25,11 +25,21 @@ public static class AmsiProviderFactory
             case AmsiProviderMode.Null:
                 return new NullAmsiProvider();
 
+            case AmsiProviderMode.RealProvider:
+                // Opt-in real-provider ingest path: host the write-only ingest
+                // pipe that receives observations from the native amsi.dll shim.
+                // Only meaningful where a listener can be hosted (Windows);
+                // elsewhere degrade to the in-memory analyzer so callers keep a
+                // working SubmitContent path and nothing crashes.
+                return CanHostRealProvider()
+                    ? new PipeIngestAmsiProvider()
+                    : new InMemoryAmsiProvider();
+
             case AmsiProviderMode.Auto:
             default:
-                // We cannot register as a real AMSI provider yet, but the
-                // in-memory analyzer gives us bypass/content visibility for
-                // anything callers feed to SubmitContent. Fail-soft.
+                // Auto never registers a real provider — the in-memory analyzer
+                // gives bypass/content visibility for anything callers feed to
+                // SubmitContent. Fail-soft.
                 return new InMemoryAmsiProvider();
         }
     }
@@ -53,4 +63,11 @@ public enum AmsiProviderMode
 
     /// <summary>Return the content-analysis in-memory provider.</summary>
     InMemory,
+
+    /// <summary>
+    /// Host the real AMSI provider ingest endpoint (write-only named pipe fed by
+    /// the native shim). Degrades to <see cref="InMemory"/> where a listener
+    /// cannot be hosted. Opt-in and Windows-only.
+    /// </summary>
+    RealProvider,
 }

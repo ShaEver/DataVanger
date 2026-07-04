@@ -77,5 +77,26 @@ public sealed class DataVangerServiceConfiguration
     /// </summary>
     public bool EnableMemoryScanPass { get; init; } = false;
 
+    /// <summary>
+    /// Opt-in gate (default OFF) for the real AMSI provider ingest path hosted
+    /// by the SERVICE runtime only. When true AND the runtime runs in Service
+    /// mode on a supported, privileged Windows host, the runtime hosts the
+    /// write-only ingest named pipe that receives observations from the native
+    /// <c>DataVanger.AmsiProvider.dll</c> shim (registered separately and
+    /// explicitly via <c>--register-amsi-provider</c>). Those observations run
+    /// the SAME <c>AmsiContentAnalyzer</c>/<c>AmsiBypassDetector</c> path as the
+    /// in-memory provider and are published as evidence-only
+    /// <c>ScriptObserved</c> events.
+    ///
+    /// Safety: this gate NEVER enables active protection, blocking, or
+    /// quarantine. The native shim always returns <c>AMSI_RESULT_CLEAN</c> and
+    /// only forwards a bounded content prefix; the service only observes. When
+    /// the gate is on, the real provider REPLACES the in-memory provider (a
+    /// single provider is hosted, so events are never duplicated). When the
+    /// ingest listener cannot be hosted (non-Windows, name in use, unsupported),
+    /// the runtime degrades to the in-memory provider without crashing.
+    /// </summary>
+    public bool EnableRealAmsiProvider { get; init; } = false;
+
     public static DataVangerServiceConfiguration SafeDefaults() => new();
 }

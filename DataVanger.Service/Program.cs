@@ -33,6 +33,11 @@ namespace DataVanger.Service;
 ///                       Windows-only). Never starts it. Never runs implicitly.
 ///   --uninstall       — stop (best-effort) and remove the Windows service
 ///                       (explicit, admin-gated, Windows-only).
+///   --register-amsi-provider   — register the native AMSI provider COM class
+///                       (explicit, admin-gated, Windows-only). Never starts
+///                       anything; the service still only OBSERVES.
+///   --unregister-amsi-provider — remove the native AMSI provider registration
+///                       (explicit, admin-gated, Windows-only).
 ///   --help / -h / -?  — print usage.
 ///
 /// Development safety guarantees:
@@ -63,6 +68,16 @@ internal static class Program
 
                 case CliMode.Uninstall:
                     return WindowsServiceInstaller.Uninstall(Console.Out, Console.Error);
+
+                case CliMode.RegisterAmsiProvider:
+                    // Explicit, admin-gated COM registration of the native AMSI
+                    // provider shim. Separate from installing the service and
+                    // never starts anything.
+                    return AmsiProviderRegistration.Register(
+                        Console.Out, Console.Error, ParseProviderDllPath(args));
+
+                case CliMode.UnregisterAmsiProvider:
+                    return AmsiProviderRegistration.Unregister(Console.Out, Console.Error);
 
                 case CliMode.Default:
                     Console.WriteLine("DataVanger.Service host.");
@@ -112,6 +127,8 @@ internal static class Program
         Service,
         Install,
         Uninstall,
+        RegisterAmsiProvider,
+        UnregisterAmsiProvider,
     }
 
     private static CliMode ParseMode(string[] args)
@@ -138,6 +155,10 @@ internal static class Program
                     return CliMode.Install;
                 case "--uninstall":
                     return CliMode.Uninstall;
+                case "--register-amsi-provider":
+                    return CliMode.RegisterAmsiProvider;
+                case "--unregister-amsi-provider":
+                    return CliMode.UnregisterAmsiProvider;
             }
         }
         return CliMode.Default;
@@ -153,6 +174,16 @@ internal static class Program
         return null;
     }
 
+    private static string? ParseProviderDllPath(string[] args)
+    {
+        if (args is null) return null;
+        for (int i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == "--provider-dll") return args[i + 1];
+        }
+        return null;
+    }
+
     private static int RunValidateConfig(ServiceConfigurationLoadResult load)
     {
         Console.WriteLine("DataVanger.Service: configuration validation");
@@ -163,6 +194,7 @@ internal static class Program
         Console.WriteLine($"  etw-command-line   : {load.Configuration.CaptureEtwCommandLine}");
         Console.WriteLine($"  etw-powershell     : {load.Configuration.CaptureEtwPowerShellSignals}");
         Console.WriteLine($"  memory-scan-pass   : {load.Configuration.EnableMemoryScanPass}");
+        Console.WriteLine($"  real-amsi-provider : {load.Configuration.EnableRealAmsiProvider}");
         Console.WriteLine($"  warning-count      : {load.Warnings.Count}");
         for (int i = 0; i < load.Warnings.Count; i++)
         {
@@ -275,6 +307,8 @@ internal static class Program
         Console.WriteLine("  --service          Run as a Windows service host (no install side effects).");
         Console.WriteLine("  --install [--config <path>]  Register the Windows service (admin; Windows-only).");
         Console.WriteLine("  --uninstall        Stop and remove the Windows service (admin; Windows-only).");
+        Console.WriteLine("  --register-amsi-provider [--provider-dll <path>]  Register the native AMSI provider (admin; Windows-only).");
+        Console.WriteLine("  --unregister-amsi-provider  Remove the native AMSI provider registration (admin; Windows-only).");
         Console.WriteLine("  --help, -h, -?     Print this message.");
     }
 }
