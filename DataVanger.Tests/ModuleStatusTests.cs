@@ -70,10 +70,13 @@ public class ModuleStatusTests
     }
 
     [Fact]
-    public void CodeReality_MemoryAndAmsiResidentPaths_ArePrepared_NeverActiveProtection()
+    public void CodeReality_MemoryAndAmsiResidentPaths_AreNeverActiveProtection()
     {
+        // Conservative reality (matches CodeRealityModuleMatrix): the memory resident
+        // runtime is Prepared and the AMSI resident runtime is Passive (observe-only,
+        // default-off). Neither is ever counted as active protection.
         Assert.Equal(ModuleOperatingState.Prepared, Find("memory-runtime").State);
-        Assert.Equal(ModuleOperatingState.Prepared, Find("amsi-runtime").State);
+        Assert.Equal(ModuleOperatingState.Passive, Find("amsi-runtime").State);
         Assert.False(Find("memory-runtime").IsActiveProtection);
         Assert.False(Find("amsi-runtime").IsActiveProtection);
     }
@@ -82,9 +85,11 @@ public class ModuleStatusTests
     public void CodeReality_PublisherTrust_UsesCertificateChainByDefault() =>
         Assert.Contains("certificate chain", Find("trusted-publishers").Detail, StringComparison.OrdinalIgnoreCase);
 
-    [Fact]
-    public void CodeReality_NamedPipeIpc_IsActiveLocalOnly() =>
-        Assert.Equal(ModuleOperatingState.Active, Find("named-pipe-ipc").State);
+    [Fact] // Conservative reality (matches CodeRealityModuleMatrix): with no connected
+           // host by default the local named-pipe path is Prepared, not Active. Marking
+           // it Active would over-claim the IPC surface.
+    public void CodeReality_NamedPipeIpc_IsPreparedLocalOnly() =>
+        Assert.Equal(ModuleOperatingState.Prepared, Find("named-pipe-ipc").State);
 
     [Fact]
     public void CodeReality_QuarantineV2_IsActive() =>
