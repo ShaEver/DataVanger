@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DataVanger.Infrastructure</AssemblyName>
+    <RootNamespace>DataVanger.Infrastructure</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.1.21" />
+    <!-- Windows DPAPI (ProtectedData) for the quarantine key protector. The
+         package restores cross-platform; every ProtectedData call is guarded by
+         OperatingSystem.IsWindows() so non-Windows hosts degrade gracefully and
+         never crash. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!-- Named-pipe ACL hardening (Phase 16). PipeSecurity / NamedPipeServerStreamAcl
+         live in System.IO.Pipes.AccessControl and are NOT in the default net8.0
+         (OS-neutral) reference set; this first-party package supplies them and
+         restores cross-platform. Every ACL call is guarded by
+         OperatingSystem.IsWindows() (see IpcPipeSecurity), so non-Windows hosts
+         use a plain local pipe and never call the Windows-only APIs. -->
+    <PackageReference Include="System.IO.Pipes.AccessControl" Version="5.0.0" />
+    <ProjectReference Include="..\DataVanger.Shared\DataVanger.Shared.csproj" />
+  </ItemGroup>
+</Project>

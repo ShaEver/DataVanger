@@ -1,0 +1,87 @@
+<Window x:Class="DataVanger.Views.RemovalCenterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:DataVanger.Localization"
+        Title="{x:Static loc:RemovalCenterLabels.WindowTitle}"
+        Width="720" Height="560"
+        WindowStartupLocation="CenterOwner"
+        Background="#0d0d0d"
+        Foreground="#e0e0e0"
+        FontFamily="Segoe UI">
+  <Window.Resources>
+    <Style x:Key="DlgBtn" TargetType="Button">
+      <Setter Property="Foreground" Value="#e0e0e0"/>
+      <Setter Property="Background" Value="#252525"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="Margin" Value="8,0,0,0"/>
+    </Style>
+    <Style x:Key="DangerBtn" TargetType="Button" BasedOn="{StaticResource DlgBtn}">
+      <Setter Property="Background" Value="#7a1f1f"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid Margin="18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Text="{x:Static loc:RemovalCenterLabels.Header}"
+               FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12"/>
+
+    <StackPanel Grid.Row="1" Margin="0,0,0,10">
+      <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold"/>
+      <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+        <TextBlock Text="{x:Static loc:RemovalCenterLabels.RecommendedAction}" Foreground="#9a9a9a"/>
+        <TextBlock Text=": " Foreground="#9a9a9a"/>
+        <TextBlock Text="{Binding RecommendedActionText}"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+        <TextBlock Text="{x:Static loc:RemovalCenterLabels.Target}" Foreground="#9a9a9a"/>
+        <TextBlock Text=": " Foreground="#9a9a9a"/>
+        <TextBlock Text="{Binding TargetText}"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+        <TextBlock Text="{x:Static loc:RemovalCenterLabels.Risk}" Foreground="#9a9a9a"/>
+        <TextBlock Text=": " Foreground="#9a9a9a"/>
+        <TextBlock Text="{Binding RiskText}"/>
+      </StackPanel>
+    </StackPanel>
+
+    <Border Grid.Row="2" Background="#141414" BorderBrush="#262626" BorderThickness="1"
+            CornerRadius="8" Padding="12">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{x:Static loc:RemovalCenterLabels.PlanHeader}"
+                   Foreground="#9a9a9a" Margin="0,0,0,6"/>
+        <DataGrid x:Name="DgSteps" ItemsSource="{Binding Steps}" AutoGenerateColumns="False"
+                  IsReadOnly="True" HeadersVisibility="Column" Background="#0b0b0b"
+                  RowBackground="#0b0b0b" Foreground="#e0e0e0" BorderThickness="0"
+                  GridLinesVisibility="None">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Ação" Binding="{Binding Action}" Width="180"/>
+            <DataGridTextColumn Header="Alvo" Binding="{Binding Target}" Width="*"/>
+            <DataGridTextColumn Header="Resultado" Binding="{Binding Outcome}" Width="130"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </DockPanel>
+    </Border>
+
+    <TextBlock Grid.Row="3" x:Name="TxtResult" Text="{Binding ResultMessage}"
+               TextWrapping="Wrap" Margin="0,10,0,0" Foreground="#d0d0d0"/>
+
+    <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+      <Button x:Name="BtnProceed" Content="{x:Static loc:RemovalCenterLabels.Proceed}"
+              Style="{StaticResource DlgBtn}"/>
+      <Button x:Name="BtnConfirm" Content="{x:Static loc:RemovalCenterLabels.ConfirmRemove}"
+              Style="{StaticResource DangerBtn}" Visibility="Collapsed"/>
+      <Button x:Name="BtnCancel" Content="{x:Static loc:RemovalCenterLabels.Cancel}"
+              Style="{StaticResource DlgBtn}" IsDefault="True" Visibility="Collapsed"/>
+      <Button x:Name="BtnClose" Content="{x:Static loc:RemovalCenterLabels.Close}"
+              Style="{StaticResource DlgBtn}"/>
+    </StackPanel>
+  </Grid>
+</Window>

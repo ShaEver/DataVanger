@@ -1,0 +1,639 @@
+<Window x:Class="DataVanger.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:DataVanger.Shell"
+        xmlns:loc="clr-namespace:DataVanger.Localization"
+        Title="DataVanger"
+        Icon="pack://application:,,,/app.ico"
+        Width="1320" Height="780"
+        MinWidth="1040" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BrushBg}"
+        Foreground="{DynamicResource BrushText}"
+        FontFamily="Segoe UI">
+
+  <Window.Resources>
+    <!-- ============================================
+         BUTTON STYLES - Light Mode
+         ============================================ -->
+    <Style x:Key="BtnBase" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="FontFamily" Value="Segoe UI"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="16,8"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}"
+                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Opacity" Value="0.88"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Opacity" Value="0.76"/>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.38"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+      <Setter Property="Background" Value="{DynamicResource BrushPrimary}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+      <Setter Property="Background" Value="{DynamicResource BrushDanger}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <Style x:Key="BtnSecondary" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+      <Setter Property="Background" Value="{DynamicResource BrushBgSecondary}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="BtnWarning" TargetType="Button" BasedOn="{StaticResource BtnBase}">
+      <Setter Property="Background" Value="{DynamicResource BrushWarning}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+
+    <!-- ============================================
+         CARD & CONTAINER STYLES
+         ============================================ -->
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="{DynamicResource BrushCardBg}"/>
+      <Setter Property="CornerRadius" Value="10"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="16"/>
+    </Style>
+
+    <Style x:Key="SectionLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
+      <Setter Property="Margin" Value="0,0,0,12"/>
+      <Setter Property="Opacity" Value="0.7"/>
+    </Style>
+
+    <!-- ============================================
+         NAVIGATION BUTTON STYLE
+         ============================================ -->
+    <Style x:Key="NavButton" TargetType="Button">
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="FontFamily" Value="Segoe UI"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="Padding" Value="12,10"/>
+      <Setter Property="Margin" Value="0,0,0,3"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+              <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource BrushBgSecondary}"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{DynamicResource BrushBgTertiary}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- ============================================
+         COMBOBOX & TEXT STYLES
+         ============================================ -->
+    <Style TargetType="ComboBox">
+      <Setter Property="MinWidth" Value="220"/>
+      <Setter Property="Padding" Value="10,6"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="Background" Value="{DynamicResource BrushBgSecondary}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="Background" Value="{DynamicResource BrushBg}"/>
+      <Setter Property="Padding" Value="10,6"/>
+    </Style>
+
+    <!-- ============================================
+         DATAGRID STYLES
+         ============================================ -->
+    <Style TargetType="DataGrid">
+      <Setter Property="Background" Value="{DynamicResource BrushBg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+      <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource BrushBgTertiary}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="RowBackground" Value="{DynamicResource BrushBg}"/>
+      <Setter Property="AlternatingRowBackground" Value="{DynamicResource BrushBgSecondary}"/>
+      <Setter Property="HeadersVisibility" Value="Column"/>
+    </Style>
+
+    <Style TargetType="DataGridColumnHeader">
+      <Setter Property="Background" Value="{DynamicResource BrushHeaderBg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+    </Style>
+
+    <Style TargetType="DataGridCell">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
+    <!-- ============================================
+         TEXTBOX & SCROLLBAR STYLES
+         ============================================ -->
+    <Style TargetType="TextBox">
+      <Setter Property="Background" Value="{DynamicResource BrushBgSecondary}"/>
+      <Setter Property="Foreground" Value="{DynamicResource BrushText}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource BrushBorder}"/>
+      <Setter Property="CaretBrush" Value="{DynamicResource BrushPrimary}"/>
+    </Style>
+
+  </Window.Resources>
+
+  <!-- ============================================
+       MAIN LAYOUT: Navigation + Content
+       ============================================ -->
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="180"/>
+      <ColumnDefinition Width="*"/>
+    </Grid.ColumnDefinitions>
+
+    <!-- ============================================
+         LEFT SIDEBAR: Navigation
+         ============================================ -->
+    <Border Grid.Column="0" Background="{DynamicResource BrushNavBg}"
+            BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,1,0">
+      <StackPanel Margin="12,16,12,16">
+        <TextBlock Style="{StaticResource SectionLabel}" Text="{x:Static shell:ShellLabels.NavigationHeader}" Margin="12,0,0,12"/>
+        <Button x:Name="NavDashboard"   Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Dashboard}"/>
+        <Button x:Name="NavScan"        Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Scan}"/>
+        <Button x:Name="NavProtection"  Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Protection}"/>
+        <Button x:Name="NavThreats"     Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Threats}"/>
+        <Button x:Name="NavQuarantine"  Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Quarantine}"/>
+        <Button x:Name="NavReports"     Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Reports}"/>
+        <Button x:Name="NavUpdates"     Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Updates}"/>
+        <Button x:Name="NavSettings"    Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Settings}"/>
+        <Button x:Name="NavDiagnostics" Style="{StaticResource NavButton}" Content="{x:Static shell:ShellLabels.Diagnostics}"/>
+
+        <!-- Theme Toggle -->
+        <Button x:Name="BtnThemeToggle" Content="🌙  Modo Escuro" Style="{StaticResource BtnSecondary}"
+                Height="36" FontSize="11" Margin="0,16,0,0" HorizontalAlignment="Stretch"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ============================================
+         MAIN CONTENT AREA
+         ============================================ -->
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="60"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="40"/>
+      </Grid.RowDefinitions>
+
+      <!-- ============================================
+           HEADER: Logo, Title, Status
+           ============================================ -->
+      <Border Grid.Row="0" Background="{DynamicResource BrushHeaderBg}"
+              BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1">
+        <Grid Margin="24,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+
+          <!-- Logo & Title -->
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="🛡" FontSize="22" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="DataVanger" FontSize="16" FontWeight="Bold"
+                         Foreground="{DynamicResource BrushPrimary}"/>
+              <TextBlock Text="Threat Detection &amp; Cleanup" FontSize="9"
+                         Foreground="{DynamicResource BrushTextTertiary}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- Status & Action Buttons -->
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock x:Name="TxtServiceStatus" Text="Service: Not running" FontSize="11"
+                       Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="TxtLastScan" Text="Nenhum scan anterior" FontSize="11"
+                       Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <Button x:Name="BtnOpenFolder" Content="📂  Logs" Style="{StaticResource BtnSecondary}"
+                    FontSize="11" Padding="10,5" Height="32" Margin="0,0,8,0"/>
+            <Button x:Name="BtnOpenReport" Content="📊  Report" Style="{StaticResource BtnSecondary}"
+                    FontSize="11" Padding="10,5" Height="32"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ============================================
+           CONTENT: Main Views (scrollable)
+           ============================================ -->
+      <Grid Grid.Row="1">
+        <ScrollViewer x:Name="ViewHome" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Grid Margin="16,16,16,16">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="300"/>
+              <ColumnDefinition Width="16"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ============================================
+                 LEFT PANEL: Scan Controls
+                 ============================================ -->
+            <StackPanel Grid.Column="0">
+              <!-- Scan Configuration Card -->
+              <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource SectionLabel}" Text="{x:Static loc:CommonLabels.StartScanSection}"/>
+
+                  <TextBlock Text="Perfil" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                  <ComboBox x:Name="CmbProfile" Margin="0,0,0,14"/>
+
+                  <TextBlock Text="O Deep Scan é abrangente mas pode demorar várias horas."
+                             TextWrapping="Wrap" Foreground="{DynamicResource BrushTextTertiary}"
+                             FontSize="10" Margin="0,0,0,14"/>
+
+                  <TextBlock Text="Limite de Hash (MB)" FontSize="11"
+                             Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                  <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                    <TextBox x:Name="TxtMaxHash" Text="0" Width="70" FontSize="13" Padding="8,6" Height="32"/>
+                    <TextBlock Text="(0 = ilimitado)" Foreground="{DynamicResource BrushTextTertiary}"
+                               FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                  </StackPanel>
+
+                  <CheckBox x:Name="ChkInteractive" Content="Quarentena interativa"
+                            Foreground="{DynamicResource BrushText}" FontSize="12" Margin="0,0,0,16"/>
+
+                  <Button x:Name="BtnScan" Content="▶   Iniciar Scan" Style="{StaticResource BtnPrimary}"
+                          Height="42" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnStop" Content="■   Parar Scan" Style="{StaticResource BtnDanger}"
+                          Height="36" FontSize="13" IsEnabled="False"/>
+                </StackPanel>
+              </Border>
+
+              <!-- Quick Actions Card -->
+              <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource SectionLabel}" Text="{x:Static loc:CommonLabels.ActionsSection}"/>
+                  <Button x:Name="BtnToggleRealtime" Content="🛰  Monitor local (UI)"
+                          Style="{StaticResource BtnPrimary}" Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnRestore" Content="↩  Restaurar" Style="{StaticResource BtnWarning}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnSchedule" Content="⏰  Agendar" Style="{StaticResource BtnSecondary}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnViewPersist" Content="📋  Persistências" Style="{StaticResource BtnSecondary}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnUpdateSignatures" Content="⬇  Assinaturas" Style="{StaticResource BtnSecondary}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnSettings" Content="⚙  Configurações" Style="{StaticResource BtnSecondary}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnModuleStatus" Content="🧩  Módulos" Style="{StaticResource BtnSecondary}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnDiagnostics" Content="ℹ  Diagnóstico" Style="{StaticResource BtnSecondary}"
+                          Height="36"/>
+                </StackPanel>
+              </Border>
+
+              <!-- Safe Cleanup Card -->
+              <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource SectionLabel}" Text="LIMPEZA SEGURA"/>
+                  <TextBlock Text="Analise antes de excluir." TextWrapping="Wrap"
+                             Foreground="{DynamicResource BrushTextTertiary}" FontSize="10" Margin="0,0,0,12"/>
+                  <CheckBox x:Name="ChkCleanerBackup" Content="Backup antes de apagar"
+                            Foreground="{DynamicResource BrushText}" FontSize="11" Margin="0,0,0,12"/>
+                  <Button x:Name="BtnAnalyzeClean" Content="🔎  Analisar" Style="{StaticResource BtnSecondary}"
+                          Height="36" Margin="0,0,0,7"/>
+                  <Button x:Name="BtnRunClean" Content="🧹  Executar" Style="{StaticResource BtnDanger}"
+                          Height="36" IsEnabled="False"/>
+                </StackPanel>
+              </Border>
+
+              <!-- Last Result Summary Card -->
+              <Border Style="{StaticResource Card}">
+                <StackPanel>
+                  <TextBlock Style="{StaticResource SectionLabel}" Text="ÚLTIMO RESULTADO"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="8"/><RowDefinition/></Grid.RowDefinitions>
+
+                    <!-- Confirmed -->
+                    <Border Grid.Column="0" Grid.Row="0" Background="#FCE4E4" CornerRadius="8" Padding="0,12">
+                      <StackPanel>
+                        <TextBlock x:Name="TxtCritCount" Text="0" FontSize="26" FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushDanger}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Confirmados" FontSize="9"
+                                   Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- High Risk -->
+                    <Border Grid.Column="1" Grid.Row="0" Background="#FFF3E0" CornerRadius="8"
+                            Padding="0,12" Margin="8,0,0,0">
+                      <StackPanel>
+                        <TextBlock x:Name="TxtHighCount" Text="0" FontSize="26" FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushWarning}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Alto Risco" FontSize="9"
+                                   Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- Suspicious -->
+                    <Border Grid.Column="0" Grid.Row="2" Background="#FFF9C4" CornerRadius="8" Padding="0,12">
+                      <StackPanel>
+                        <TextBlock x:Name="TxtSuspCount" Text="0" FontSize="26" FontWeight="Bold"
+                                   Foreground="#F57F17" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Suspeitos" FontSize="9"
+                                   Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+
+                    <!-- New -->
+                    <Border Grid.Column="1" Grid.Row="2" Background="#E8F5E9" CornerRadius="8"
+                            Padding="0,12" Margin="8,0,0,0">
+                      <StackPanel>
+                        <TextBlock x:Name="TxtNewCount" Text="0" FontSize="26" FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushSuccess}" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Novos" FontSize="9"
+                                   Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <!-- ============================================
+                 RIGHT PANEL: Dashboard & Data
+                 ============================================ -->
+            <Grid Grid.Column="2">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="270"/>
+                <RowDefinition Height="220"/>
+                <RowDefinition Height="*"/>
+              </Grid.RowDefinitions>
+
+              <!-- KPI Cards -->
+              <UniformGrid Grid.Row="0" Columns="5" Margin="0,0,0,12">
+                <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="CPU/RAM" Foreground="{DynamicResource BrushTextSecondary}"
+                               FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="TxtCpuRam" Text="—"
+                               Foreground="{DynamicResource BrushPrimary}" FontSize="18"
+                               FontWeight="Bold" Margin="0,8,0,0"/>
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="ACHADOS" Foreground="{DynamicResource BrushTextSecondary}"
+                               FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="TxtThreatTotal" Text="0"
+                               Foreground="{DynamicResource BrushWarning}" FontSize="22"
+                               FontWeight="Bold" Margin="0,6,0,0"/>
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="ÚLTIMO SCAN" Foreground="{DynamicResource BrushTextSecondary}"
+                               FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="TxtDashboardLastScan" Text="Nenhum"
+                               Foreground="{DynamicResource BrushText}" FontSize="12"
+                               TextWrapping="Wrap" Margin="0,8,0,0"/>
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,8,0">
+                  <StackPanel>
+                    <TextBlock Text="VELOCIDADE" Foreground="{DynamicResource BrushTextSecondary}"
+                               FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="TxtScanSpeed" Text="0 arq/s"
+                               Foreground="{DynamicResource BrushSuccess}" FontSize="18"
+                               FontWeight="Bold" Margin="0,8,0,0"/>
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Text="ETA" Foreground="{DynamicResource BrushTextSecondary}"
+                               FontSize="10" FontWeight="Bold"/>
+                    <TextBlock x:Name="TxtEta" Text="—"
+                               Foreground="{DynamicResource BrushText}" FontSize="18"
+                               FontWeight="Bold" Margin="0,8,0,0"/>
+                  </StackPanel>
+                </Border>
+              </UniformGrid>
+
+              <!-- Progress Card -->
+              <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,12">
+                <StackPanel>
+                  <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TxtProgressLabel" Text="Aguardando..." FontSize="12"
+                               Foreground="{DynamicResource BrushTextSecondary}"/>
+                    <TextBlock Grid.Column="1" x:Name="TxtProgressTime" Text="" FontSize="11"
+                               Foreground="{DynamicResource BrushTextTertiary}"/>
+                  </Grid>
+                  <ProgressBar x:Name="PbProgress" Height="6" Value="0" Maximum="100"
+                               Background="{DynamicResource BrushBgSecondary}"
+                               Foreground="{DynamicResource BrushPrimary}" BorderThickness="0"/>
+                  <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TxtFilesRemaining" Text="Restantes: —"
+                               Foreground="{DynamicResource BrushTextTertiary}" FontSize="10"/>
+                    <TextBlock Grid.Column="1" x:Name="TxtCurrentFile" Text="Arquivo: —"
+                               Foreground="{DynamicResource BrushTextTertiary}" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Grid.Column="2" x:Name="TxtScanStats" Text="0%"
+                               Foreground="{DynamicResource BrushTextTertiary}" FontSize="10" HorizontalAlignment="Right"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- Threats Table -->
+              <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,12">
+                <Grid>
+                  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                  <Border Grid.Row="0" Background="{DynamicResource BrushHeaderBg}" CornerRadius="10,10,0,0" Padding="14,10">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                      <TextBlock Text="Ameaças Detectadas" FontSize="12" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource BrushText}" VerticalAlignment="Center"/>
+                      <ComboBox Grid.Column="1" x:Name="CmbRiskFilter" Width="150" Margin="14,0,0,0" SelectedIndex="0">
+                        <ComboBoxItem Content="Todos"/>
+                        <ComboBoxItem Content="Crítico"/>
+                        <ComboBoxItem Content="Alto"/>
+                        <ComboBoxItem Content="Suspeito"/>
+                        <ComboBoxItem Content="Limpo"/>
+                      </ComboBox>
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button x:Name="BtnReviewFix" Content="🛠  Revisar" Style="{StaticResource BtnPrimary}"
+                                FontSize="11" Padding="12,5" Height="32" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnRemovalCenter" Content="📋  Remover" Style="{StaticResource BtnSecondary}"
+                                FontSize="11" Padding="12,5" Height="32"/>
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <DataGrid Grid.Row="1" x:Name="DgThreats" AutoGenerateColumns="False" IsReadOnly="True"
+                            CanUserSortColumns="True" VerticalScrollBarVisibility="Auto"
+                            EnableRowVirtualization="True" EnableColumnVirtualization="True">
+                    <DataGrid.Columns>
+                      <DataGridTextColumn Header="Nome do arquivo" Binding="{Binding FileName}" Width="160"/>
+                      <DataGridTextColumn Header="Risco" Binding="{Binding RiskLabel}" Width="100"/>
+                      <DataGridTextColumn Header="Reputação" Binding="{Binding ReputationSummary}" Width="220"/>
+                      <DataGridTextColumn Header="Tipo" Binding="{Binding Extension}" Width="70"/>
+                      <DataGridTextColumn Header="Hash" Binding="{Binding SHA256}" Width="180"/>
+                      <DataGridTextColumn Header="Assinatura" Binding="{Binding SignatureName}" Width="130"/>
+                      <DataGridTextColumn Header="Caminho" Binding="{Binding Path}" Width="*"/>
+                      <DataGridTextColumn Header="Ação" Binding="{Binding RecommendedAction}" Width="180"/>
+                    </DataGrid.Columns>
+                  </DataGrid>
+                </Grid>
+              </Border>
+
+              <!-- Cleanup Analysis -->
+              <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0" Margin="0,0,0,12">
+                <Grid>
+                  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                  <Border Grid.Row="0" Background="{DynamicResource BrushHeaderBg}" CornerRadius="10,10,0,0" Padding="14,10">
+                    <TextBlock Text="Análise de Limpeza" FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource BrushText}"/>
+                  </Border>
+                  <DataGrid Grid.Row="1" x:Name="DgCleaner" AutoGenerateColumns="False" VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                      <DataGridCheckBoxColumn Header="Limpar" Binding="{Binding Selected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                      <DataGridTextColumn Header="Categoria" Binding="{Binding Category}" Width="150" IsReadOnly="True"/>
+                      <DataGridTextColumn Header="Tamanho" Binding="{Binding SizeLabel}" Width="90" IsReadOnly="True"/>
+                      <DataGridTextColumn Header="Qtd" Binding="{Binding FileCount}" Width="70" IsReadOnly="True"/>
+                      <DataGridTextColumn Header="Mais recente" Binding="{Binding LastWriteLabel}" Width="120" IsReadOnly="True"/>
+                      <DataGridTextColumn Header="Risco" Binding="{Binding Risk}" Width="80" IsReadOnly="True"/>
+                      <DataGridTextColumn Header="Impacto" Binding="{Binding Impact}" Width="220" IsReadOnly="True"/>
+                      <DataGridTextColumn Header="Caminho" Binding="{Binding Path}" Width="*" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                  </DataGrid>
+                </Grid>
+              </Border>
+
+              <!-- Execution Log -->
+              <Border Grid.Row="4" Style="{StaticResource Card}" Padding="0">
+                <Grid>
+                  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                  <Border Grid.Row="0" Background="{DynamicResource BrushHeaderBg}" CornerRadius="10,10,0,0" Padding="14,10">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="Log de Execução" FontSize="12" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource BrushText}" VerticalAlignment="Center"/>
+                      <Button x:Name="BtnClearLog" Content="Limpar" Style="{StaticResource BtnSecondary}"
+                              FontSize="10" Padding="10,4" Margin="12,0,0,0" Height="30"/>
+                    </StackPanel>
+                  </Border>
+                  <ScrollViewer Grid.Row="1" x:Name="ScrollLog" Background="{DynamicResource BrushBg}"
+                                VerticalScrollBarVisibility="Auto">
+                    <TextBox x:Name="TxtLog" Background="Transparent"
+                             Foreground="{DynamicResource BrushText}" FontFamily="Consolas" FontSize="11"
+                             BorderThickness="0" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                             Padding="14,12" VerticalAlignment="Stretch"/>
+                  </ScrollViewer>
+                </Grid>
+              </Border>
+            </Grid>
+          </Grid>
+        </ScrollViewer>
+
+        <!-- Other Views (Reports, Updates, Diagnostics) -->
+        <ScrollViewer x:Name="ViewReports" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <Border Style="{StaticResource Card}" Margin="24" MaxWidth="560" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+              <TextBlock Style="{StaticResource SectionLabel}" Text="{x:Static shell:ShellLabels.ReportsHeader}"/>
+              <TextBlock Text="{x:Static shell:ShellLabels.ReportsDescription}" TextWrapping="Wrap"
+                         Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,0,14"/>
+              <Button x:Name="BtnNavOpenFolder" Content="📂  Pasta de Logs" Style="{StaticResource BtnSecondary}"
+                      Height="36" Margin="0,0,0,7"/>
+              <Button x:Name="BtnNavOpenReport" Content="📊  Relatório HTML" Style="{StaticResource BtnSecondary}"
+                      Height="36" Margin="0,0,0,7"/>
+              <Button x:Name="BtnNavViewPersist" Content="📋  Ver Persistências" Style="{StaticResource BtnSecondary}"
+                      Height="36" Margin="0,0,0,14"/>
+              <TextBlock Text="{x:Static shell:ShellLabels.DeferredNote}" TextWrapping="Wrap"
+                         Foreground="{DynamicResource BrushTextTertiary}" FontSize="10"/>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="ViewUpdates" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <Border Style="{StaticResource Card}" Margin="24" MaxWidth="560" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+              <TextBlock Style="{StaticResource SectionLabel}" Text="{x:Static shell:ShellLabels.UpdatesHeader}"/>
+              <TextBlock Text="{x:Static shell:ShellLabels.UpdatesDescription}" TextWrapping="Wrap"
+                         Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,0,14"/>
+              <Button x:Name="BtnNavUpdateSignatures" Content="⬇  Atualizar Assinaturas"
+                      Style="{StaticResource BtnSecondary}" Height="36"/>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+
+        <ScrollViewer x:Name="ViewDiagnostics" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+          <Border Style="{StaticResource Card}" Margin="24" MaxWidth="560" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <StackPanel>
+              <TextBlock Style="{StaticResource SectionLabel}" Text="{x:Static shell:ShellLabels.DiagnosticsHeader}"/>
+              <TextBlock Text="{x:Static shell:ShellLabels.DiagnosticsDescription}" TextWrapping="Wrap"
+                         Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" Margin="0,0,0,14"/>
+              <Button x:Name="BtnNavModuleStatus" Content="🧩  Status dos Módulos"
+                      Style="{StaticResource BtnSecondary}" Height="36" Margin="0,0,0,7"/>
+              <Button x:Name="BtnNavDiagnostics" Content="ℹ  Sobre / Diagnóstico"
+                      Style="{StaticResource BtnSecondary}" Height="36"/>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+      </Grid>
+
+      <!-- ============================================
+           FOOTER: Status Bar
+           ============================================ -->
+      <Border Grid.Row="2" Background="{DynamicResource BrushHeaderBg}"
+              BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,1,0,0">
+        <Grid Margin="16,0">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBlock x:Name="TxtStatus" Text="Pronto." FontSize="11"
+                     Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="{x:Static loc:CommonLabels.FooterTagline}" FontSize="10"
+                     Foreground="{DynamicResource BrushTextTertiary}" VerticalAlignment="Center"/>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>
