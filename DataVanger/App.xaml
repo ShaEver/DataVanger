@@ -1,0 +1,48 @@
+<Application x:Class="DataVanger.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+  <Application.Resources>
+    <!-- ============================================
+         THEME SYSTEM: Light & Dark Mode
+         ============================================ -->
+
+    <!-- Light Mode Colors (Default) -->
+    <Color x:Key="ThemePrimary">#0D6CB8</Color>          <!-- Electric Blue -->
+    <Color x:Key="ThemeSuccess">#2E7D32</Color>          <!-- Forest Green -->
+    <Color x:Key="ThemeWarning">#F57C00</Color>          <!-- Deep Orange -->
+    <Color x:Key="ThemeDanger">#C62828</Color>           <!-- Deep Red -->
+    <Color x:Key="ThemeInfo">#1565C0</Color>             <!-- Indigo -->
+
+    <Color x:Key="ThemeBg">#FFFFFF</Color>               <!-- Pure White -->
+    <Color x:Key="ThemeBgSecondary">#F5F5F5</Color>       <!-- Light Gray -->
+    <Color x:Key="ThemeBgTertiary">#EEEEEE</Color>        <!-- Lighter Gray -->
+    <Color x:Key="ThemeText">#212121</Color>             <!-- Dark Charcoal -->
+    <Color x:Key="ThemeTextSecondary">#666666</Color>    <!-- Medium Gray -->
+    <Color x:Key="ThemeTextTertiary">#999999</Color>     <!-- Light Gray -->
+    <Color x:Key="ThemeBorder">#DDDDDD</Color>           <!-- Border Gray -->
+
+    <Color x:Key="ThemeCardBg">#FAFAFA</Color>           <!-- Off-white -->
+    <Color x:Key="ThemeNavBg">#FFFFFF</Color>            <!-- Nav white -->
+    <Color x:Key="ThemeHeaderBg">#F8F8F8</Color>         <!-- Header light -->
+
+    <!-- Color Brushes -->
+    <SolidColorBrush x:Key="BrushPrimary" Color="{StaticResource ThemePrimary}"/>
+    <SolidColorBrush x:Key="BrushSuccess" Color="{StaticResource ThemeSuccess}"/>
+    <SolidColorBrush x:Key="BrushWarning" Color="{StaticResource ThemeWarning}"/>
+    <SolidColorBrush x:Key="BrushDanger" Color="{StaticResource ThemeDanger}"/>
+    <SolidColorBrush x:Key="BrushInfo" Color="{StaticResource ThemeInfo}"/>
+
+    <SolidColorBrush x:Key="BrushBg" Color="{StaticResource ThemeBg}"/>
+    <SolidColorBrush x:Key="BrushBgSecondary" Color="{StaticResource ThemeBgSecondary}"/>
+    <SolidColorBrush x:Key="BrushBgTertiary" Color="{StaticResource ThemeBgTertiary}"/>
+    <SolidColorBrush x:Key="BrushText" Color="{StaticResource ThemeText}"/>
+    <SolidColorBrush x:Key="BrushTextSecondary" Color="{StaticResource ThemeTextSecondary}"/>
+    <SolidColorBrush x:Key="BrushTextTertiary" Color="{StaticResource ThemeTextTertiary}"/>
+    <SolidColorBrush x:Key="BrushBorder" Color="{StaticResource ThemeBorder}"/>
+    <SolidColorBrush x:Key="BrushCardBg" Color="{StaticResource ThemeCardBg}"/>
+    <SolidColorBrush x:Key="BrushNavBg" Color="{StaticResource ThemeNavBg}"/>
+    <SolidColorBrush x:Key="BrushHeaderBg" Color="{StaticResource ThemeHeaderBg}"/>
+
+  </Application.Resources>
+</Application>

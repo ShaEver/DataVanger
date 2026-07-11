@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DataVanger</AssemblyName>
+    <RootNamespace>DataVanger</RootNamespace>
+    <!-- Beta 01B: recursos neutros do assembly são pt-BR (idioma padrão). -->
+    <NeutralLanguage>pt-BR</NeutralLanguage>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationHighResolutionScrollingCompatible>true</ApplicationHighResolutionScrollingCompatible>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>3.1.0</Version>
+    <AssemblyVersion>3.1.0.0</AssemblyVersion>
+    <FileVersion>3.1.0.0</FileVersion>
+    <Product>DataVanger</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="app.ico" />
+  </ItemGroup>
+
+  <!-- Bundled default detection pack (EICAR baseline). Copied next to the executable so
+       DefaultSignaturePack.EnsureSeeded can seed it into the user's signature root. -->
+  <ItemGroup>
+    <Content Include="Signatures.default\**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DataVanger.Shared\DataVanger.Shared.csproj" />
+    <!-- F1: the UI now composes the signed-update pipeline (SignedUpdateService +
+         HttpUpdateTransport + FileSystemSignatureUpdateSink) that lives in the Engine project. -->
+    <ProjectReference Include="..\DataVanger.Engine\DataVanger.Engine.csproj" />
+    <!-- Process-oriented memory scanning and in-memory AMSI telemetry live in
+         the OS-neutral shared infrastructure library so both the WPF UI and
+         the resident service can compose them without a service -> WPF edge. -->
+    <ProjectReference Include="..\DataVanger.Infrastructure\DataVanger.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!--
+    Real-YARA backend activation CANDIDATE — Phase 12_REAL_LIBYARA_ACTIVATION.
+    Enabled on this candidate branch for Windows restore/build/native-load/rule
+    validation only (NOT a stable merge). dnYara is the managed wrapper;
+    dnYara.NativePack ships the 64-bit native libyara.dll, so the process must be x64.
+    When the native lib is absent at runtime, LibyaraEngine.TryCreate returns null and
+    EngineComposition keeps the guaranteed LightweightYaraDatabase fallback. Real
+    external YARA matches never confirm malware (Confirmed=false, Score=0).
+    Rollback: revert this PropertyGroup + ItemGroup back to a comment
+    (see outputs/12_REAL_LIBYARA_ACTIVATION_CANDIDATE.md).
+  -->
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);YARA_REAL</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="dnYara" Version="2.1.0" />
+    <PackageReference Include="dnYara.NativePack" Version="2.1.0.3" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="all" />
+    <None Include="$(PkgdnYara_NativePack)\lib\netstandard1.1\libyara.dll" Link="libyara.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

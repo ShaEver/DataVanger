@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DataVanger.Service</AssemblyName>
+    <RootNamespace>DataVanger.Service</RootNamespace>
+    <!-- Emit a real application-host executable (DataVanger.Service.exe). The
+         Windows service binPath points at this exe so the Service Control
+         Manager tracks and controls the actual hosting process directly.
+         Registering the shared dotnet.exe muxer instead was what caused
+         `sc stop` to fail with 1061 ("cannot accept control messages"). -->
+    <UseAppHost>true</UseAppHost>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>false</IsPublishable>
+    <SelfContained>false</SelfContained>
+    <PublishAot>false</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Phase 15: generic host + Windows Service lifetime. AddWindowsService()
+         is a no-op when not launched by the SCM, so the host runs as a console
+         host on non-Windows / interactive use (graceful degradation). Both
+         packages are first-party and restore cross-platform. Service
+         install/uninstall is performed explicitly via sc.exe (no extra package),
+         guarded by OperatingSystem.IsWindows() + an administrator check. -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <ProjectReference Include="..\DataVanger.Shared\DataVanger.Shared.csproj" />
+    <ProjectReference Include="..\DataVanger.Engine\DataVanger.Engine.csproj" />
+    <ProjectReference Include="..\DataVanger.Infrastructure\DataVanger.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>

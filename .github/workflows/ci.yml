@@ -1,0 +1,85 @@
+name: CI (Windows)
+
+# DataVanger targets net8.0-windows (WPF + DPAPI + ETW + named-pipe ACLs),
+# so build and tests must run on a Windows runner.
+
+on:
+  push:
+    branches: [ "main", "claude/**" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: Build, test & invariants
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore DataVanger.sln
+
+      - name: Build (Release)
+        run: dotnet build DataVanger.sln --configuration Release --no-restore
+
+      - name: Test
+        run: >
+          dotnet test DataVanger.Tests/DataVanger.Tests.csproj
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+          if-no-files-found: ignore
+
+      - name: Invariants (no anonymous catch / no lock(qm) / no CRLF .cs)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cs = Get-ChildItem -Recurse -Filter *.cs |
+                Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\' }
+
+          $anonCatch = $cs | Select-String 'catch\s*\{\s*\}'
+          $lockQm    = $cs | Select-String 'lock\s*\(qm\)'
+          $crlf      = $cs | Where-Object { (Get-Content $_.FullName -Raw) -match "`r" }
+
+          $fail = $false
+          if ($anonCatch) {
+            Write-Host "::error::Anonymous catch blocks found:"
+            $anonCatch | ForEach-Object { Write-Host "  $_" }
+            $fail = $true
+          }
+          if ($lockQm) {
+            Write-Host "::error::lock(qm) usage found:"
+            $lockQm | ForEach-Object { Write-Host "  $_" }
+            $fail = $true
+          }
+          if ($crlf) {
+            Write-Host "::error::CRLF .cs files found:"
+            $crlf | ForEach-Object { Write-Host "  $($_.FullName)" }
+            $fail = $true
+          }
+
+          if ($fail) { exit 1 }
+          Write-Host "Invariants OK: zero anonymous catch, zero lock(qm), zero CRLF .cs files."

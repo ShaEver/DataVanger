@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- en-US scaffold (Beta 01B): PARTIAL by design. Navigation labels and
+       section headers only. Missing keys (descriptions, deferred note, all
+       Legacy_* entries) intentionally fall back to the neutral pt-BR
+       resources, proving deterministic fallback. Full translation is a later
+       phase. -->
+
+  <data name="Shell_NavigationHeader" xml:space="preserve">
+    <value>NAVIGATION</value>
+  </data>
+  <data name="Shell_Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Shell_Scan" xml:space="preserve">
+    <value>Scan</value>
+  </data>
+  <data name="Shell_Protection" xml:space="preserve">
+    <value>Protection</value>
+  </data>
+  <data name="Shell_Threats" xml:space="preserve">
+    <value>Threats</value>
+  </data>
+  <data name="Shell_Quarantine" xml:space="preserve">
+    <value>Quarantine</value>
+  </data>
+  <data name="Shell_Reports" xml:space="preserve">
+    <value>Reports</value>
+  </data>
+  <data name="Shell_Updates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="Shell_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Shell_Diagnostics" xml:space="preserve">
+    <value>Advanced Diagnostics</value>
+  </data>
+
+  <data name="Shell_ReportsHeader" xml:space="preserve">
+    <value>REPORTS &amp; HISTORY</value>
+  </data>
+  <data name="Shell_UpdatesHeader" xml:space="preserve">
+    <value>UPDATES</value>
+  </data>
+  <data name="Shell_DiagnosticsHeader" xml:space="preserve">
+    <value>ADVANCED DIAGNOSTICS</value>
+  </data>
+
+  <!-- Phase 05 Removal Center: partial scaffold; untranslated keys fall back to pt-BR. -->
+  <data name="RemovalCenter_Header" xml:space="preserve">
+    <value>Removal Center</value>
+  </data>
+  <data name="RemovalCenter_Proceed" xml:space="preserve">
+    <value>Proceed</value>
+  </data>
+  <data name="RemovalCenter_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="RemovalCenter_ConfirmTitle" xml:space="preserve">
+    <value>Confirm destructive action</value>
+  </data>
+
+  <!-- Phase 07 onboarding: partial scaffold; untranslated keys fall back to pt-BR. -->
+  <data name="Onboarding_Header" xml:space="preserve">
+    <value>Welcome to DataVanger</value>
+  </data>
+  <data name="Onboarding_Apply" xml:space="preserve">
+    <value>Apply and continue</value>
+  </data>
+  <data name="Onboarding_Skip" xml:space="preserve">
+    <value>Skip</value>
+  </data>
+</root>
