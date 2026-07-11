@@ -108,7 +108,9 @@ public sealed class FileSystemUpdateStateStore : IUpdateStateStore
         }
         finally
         {
-            try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+            try { if (File.Exists(temp)) File.Delete(temp); }
+            catch (IOException) { /* best effort */ }
+            catch (UnauthorizedAccessException) { /* best effort */ }
         }
     }
 

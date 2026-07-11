@@ -362,7 +362,7 @@ public sealed class FileSystemSignatureUpdateSink : IUpdateContentSink
             }
             File.Move(temp, path, overwrite: true);
         }
-        finally { try { if (File.Exists(temp)) File.Delete(temp); } catch { } }
+        finally { try { if (File.Exists(temp)) File.Delete(temp); } catch (IOException) { /* best effort */ } catch (UnauthorizedAccessException) { /* best effort */ } }
     }
 
     private static string ComputeFileHash(string path)
@@ -411,7 +411,7 @@ public sealed class FileSystemSignatureUpdateSink : IUpdateContentSink
     }
 
     private static string SanitizeFeedId(string feedId) => Sanitize(feedId).ToLowerInvariant();
-    private static void TryDeleteDirectory(string path) { try { if (Directory.Exists(path)) Directory.Delete(path, true); } catch { } }
+    private static void TryDeleteDirectory(string path) { try { if (Directory.Exists(path)) Directory.Delete(path, true); } catch (IOException) { /* best effort */ } catch (UnauthorizedAccessException) { /* best effort */ } }
 
     public enum UpdateJournalState { Staging, Verified, Activating, Active, RollbackPending, RolledBack }
     public enum UpdateFaultPoint { BeforeStageWrite, AfterStageWrite, BeforeVerify, BeforeVersionRename, BeforePointerCommit, AfterPointerCommit, BeforeCleanup }
